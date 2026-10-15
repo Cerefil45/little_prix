@@ -35,6 +35,13 @@ export class RaceScene extends Phaser.Scene {
   private totalLaps: number = 3;
   private lastCheckpoint: number = -1;
   private checkpoints: Array<{ x: number; y: number; radius: number }> = [];
+  
+  // Cronómetro
+  private raceTime: number = 0;           // ms totales de carrera
+  private lapTimes: number[] = [];        // tiempos de vueltas completadas
+  private currentLapTime: number = 0;     // tiempo de la vuelta actual
+  private raceStarted: boolean = false;   // false durante countdown
+  private raceFinished: boolean = false;  // true al terminar la carrera
 
   constructor() {
     super({ key: 'RaceScene' });
@@ -275,16 +282,32 @@ export class RaceScene extends Phaser.Scene {
    * Completa una vuelta.
    */
   private completeLap(): void {
+    // Registrar tiempo de esta vuelta
+    this.lapTimes.push(this.currentLapTime);
+    
     this.emitSceneEvent('lap', {
       lap: this.currentLap,
-      total: this.totalLaps
+      total: this.totalLaps,
+      lapTime: this.currentLapTime
     });
 
     this.currentLap++;
+    this.currentLapTime = 0; // Reset tiempo de vuelta
 
     // Si completó todas las vueltas, emitir evento de carrera terminada
     if (this.currentLap > this.totalLaps) {
+      this.raceFinished = true;
+      
+      // Calcular mejor vuelta
+      const bestLap = this.lapTimes.length > 0 
+        ? Math.min(...this.lapTimes) 
+        : this.raceTime;
+      
       this.emitSceneEvent('raceFinished', {
+        trackName: this.track.name,
+        totalTime: this.raceTime,
+        lapTimes: [...this.lapTimes],
+        bestLap: bestLap,
         totalLaps: this.totalLaps
       });
     }
@@ -369,21 +392,33 @@ export class RaceScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
-    if (this.isPaused) return;
+    if (this.isPaused || this.raceFinished) return;
 
     const dt = delta / 1000;
 
-    // Combinar input de teclado y táctil
-    const combinedInput: InputState = {
+    // Actualizar cronómetro (solo si la carrera ha empezado)
+    if (this.raceStarted) {
+      this.raceTime += delta;
+      this.currentLapTime += delta;
+    }
+
+    // Bloquear input durante el countdown
+    const effectiveInput: InputState = this.raceStarted ? {
       accelerating: this.inputState.accelerating || !!this.keyboardInput['W'] || !!this.keyboardInput['UP'],
       braking: this.inputState.braking || !!this.keyboardInput['S'] || !!this.keyboardInput['DOWN'],
       steerLeft: this.inputState.steerLeft || !!this.keyboardInput['A'] || !!this.keyboardInput['LEFT'],
       steerRight: this.inputState.steerRight || !!this.keyboardInput['D'] || !!this.keyboardInput['RIGHT'],
       drifting: this.inputState.drifting || !!this.keyboardInput['SPACE'] || !!this.keyboardInput['SHIFT'],
+    } : {
+      accelerating: false,
+      braking: false,
+      steerLeft: false,
+      steerRight: false,
+      drifting: false,
     };
 
     // Actualizar kart
-    this.kart.update(dt, combinedInput);
+    this.kart.update(dt, effectiveInput);
 
     // Detección manual de colisiones con bordes
     if (this.trackBoundaries && this.kart.body) {
@@ -408,7 +443,12 @@ export class RaceScene extends Phaser.Scene {
       currentLap: this.currentLap,
       totalLaps: this.totalLaps,
       lastCheckpoint: this.lastCheckpoint,
-      totalCheckpoints: this.checkpoints.length
+      totalCheckpoints: this.checkpoints.length,
+      raceTime: this.raceTime,
+      lapTimes: [...this.lapTimes],
+      currentLapTime: this.currentLapTime,
+      raceStarted: this.raceStarted,
+      raceFinished: this.raceFinished
     });
   }
 
@@ -444,6 +484,8 @@ export class RaceScene extends Phaser.Scene {
    */
   restartRace(): void {
     this.isPaused = false;
+    this.raceFinished = false;
+    this.raceStarted = false;
     // Reset kart position
     this.kart.sprite.setPosition(this.track.startX, this.track.startY);
     this.kart.physics.speed = 0;
@@ -463,10 +505,31 @@ export class RaceScene extends Phaser.Scene {
       drifting: false,
     };
     this.keyboardInput = {};
-    // Reset vueltas
+    // Reset vueltas y tiempos
     this.currentLap = 1;
     this.lastCheckpoint = -1;
+    this.raceTime = 0;
+    this.currentLapTime = 0;
+    this.lapTimes = [];
     this.emitSceneEvent('restarted');
+  }
+
+  /**
+   * Inicia la carrera (llamado después del countdown).
+   */
+  startRace(): void {
+    this.raceStarted = true;
+    this.emitSceneEvent('raceStarted');
+  }
+
+  /**
+   * Obtiene el estado actual de la carrera.
+   */
+  getRaceStatus(): { raceStarted: boolean; raceFinished: boolean } {
+    return {
+      raceStarted: this.raceStarted,
+      raceFinished: this.raceFinished
+    };
   }
 
   /**

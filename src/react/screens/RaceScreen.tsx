@@ -1,17 +1,23 @@
 /**
  * RaceScreen - Pantalla completa de carrera
- * Integra canvas Phaser, HUD, controles táctiles y menús.
+ * Integra canvas Phaser, HUD, controles táctiles, countdown y menús.
  */
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { GameCanvas } from '../components/GameCanvas';
 import { TouchControls } from '../components/TouchControls';
+import { Countdown } from '../components/Countdown';
+import { ResultsScreen } from './ResultsScreen';
+import { formatTime } from '../../core/storage';
 import type { RaceScene } from '../../game/scenes/RaceScene';
 import type { InputState } from '../../game/systems/MovementSystem';
+import type { RaceResult } from '../../core/types';
 
 interface RaceScreenProps {
   onBack: () => void;
 }
+
+type ScreenState = 'countdown' | 'racing' | 'finished';
 
 export function RaceScreen({ onBack }: RaceScreenProps) {
   const [isPaused, setIsPaused] = useState(false);
@@ -23,6 +29,13 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
   const [isReady, setIsReady] = useState(false);
   const [currentLap, setCurrentLap] = useState(1);
   const [totalLaps, setTotalLaps] = useState(3);
+  const [raceTime, setRaceTime] = useState(0);
+  const [currentLapTime, setCurrentLapTime] = useState(0);
+  const [lapTimes, setLapTimes] = useState<number[]>([]);
+  const [screenState, setScreenState] = useState<ScreenState>('countdown');
+  const [raceResult, setRaceResult] = useState<RaceResult | null>(null);
+  const [trackName, setTrackName] = useState('');
+  
   const inputRef = useRef<InputState>({
     accelerating: false,
     braking: false,
@@ -46,9 +59,14 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     totalLaps: number;
     lastCheckpoint: number;
     totalCheckpoints: number;
+    raceTime: number;
+    lapTimes: number[];
+    currentLapTime: number;
+    raceStarted: boolean;
+    raceFinished: boolean;
   }) => {
     const now = performance.now();
-    if (now - lastUpdateRef.current < 100) return; // Actualizar cada 100ms máximo
+    if (now - lastUpdateRef.current < 100) return;
     lastUpdateRef.current = now;
     
     setSpeed(state.speed);
@@ -57,10 +75,54 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     setIsOffTrack(state.isOffTrack);
     setCurrentLap(state.currentLap);
     setTotalLaps(state.totalLaps);
+    setRaceTime(state.raceTime);
+    setCurrentLapTime(state.currentLapTime);
+    setLapTimes(state.lapTimes);
   }, []);
 
   const handleReady = useCallback(() => {
     setIsReady(true);
+  }, []);
+
+  // Manejar evento de carrera terminada
+  useEffect(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+
+    const handleRaceFinished = (data: unknown) => {
+      const result = data as {
+        trackName: string;
+        totalTime: number;
+        lapTimes: number[];
+        bestLap: number;
+        totalLaps: number;
+      };
+      
+      setTrackName(result.trackName);
+      setRaceResult({
+        trackName: result.trackName,
+        totalTime: result.totalTime,
+        lapTimes: result.lapTimes,
+        bestLap: result.bestLap,
+        totalLaps: result.totalLaps,
+        finishedAt: Date.now()
+      });
+      setScreenState('finished');
+    };
+
+    scene.onSceneEvent('raceFinished', handleRaceFinished);
+    
+    return () => {
+      // Cleanup handled by scene shutdown
+    };
+  }, [isReady]);
+
+  // Countdown completado → iniciar carrera
+  const handleCountdownComplete = useCallback(() => {
+    if (sceneRef.current) {
+      sceneRef.current.startRace();
+    }
+    setScreenState('racing');
   }, []);
 
   const handlePause = () => {
@@ -68,7 +130,6 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
       sceneRef.current.pauseRace();
     }
     setIsPaused(true);
-    // Clear inputs when pausing
     inputRef.current = {
       accelerating: false,
       braking: false,
@@ -95,6 +156,11 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     setDriftCharge(0);
     setIsOffTrack(false);
     setCurrentLap(1);
+    setRaceTime(0);
+    setCurrentLapTime(0);
+    setLapTimes([]);
+    setScreenState('countdown');
+    setRaceResult(null);
   };
 
   const handleBack = () => {
@@ -104,6 +170,17 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     setIsPaused(false);
     onBack();
   };
+
+  // Si la carrera terminó, mostrar resultados
+  if (screenState === 'finished' && raceResult) {
+    return (
+      <ResultsScreen
+        result={raceResult}
+        onRestart={handleRestart}
+        onMenu={handleBack}
+      />
+    );
+  }
 
   const speedPercent = Math.min(100, (speed / maxSpeed) * 100);
 
@@ -117,8 +194,13 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
         sceneRef={sceneRef}
       />
 
+      {/* Countdown overlay */}
+      {isReady && screenState === 'countdown' && (
+        <Countdown onComplete={handleCountdownComplete} />
+      )}
+
       {/* HUD Superior */}
-      {isReady && (
+      {isReady && screenState === 'racing' && (
         <div className="fixed top-0 left-0 right-0 z-10 pointer-events-none">
           <div className="flex justify-between items-start p-3">
             {/* Velocímetro */}
@@ -138,35 +220,54 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
               </div>
             </div>
 
-            {/* Contador de Vueltas */}
-            <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
-              <div className="text-xs text-gray-400 mb-1">VUELTA</div>
-              <div className="text-xl font-bold text-white font-mono">
-                {Math.min(currentLap, totalLaps)} <span className="text-xs text-gray-400">/ {totalLaps}</span>
+            {/* Cronómetro y Vueltas */}
+            <div className="flex flex-col gap-2 items-end">
+              {/* Cronómetro */}
+              <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
+                <div className="text-xs text-gray-400 mb-1">TIEMPO</div>
+                <div className="text-lg font-bold text-white font-mono">
+                  {formatTime(raceTime)}
+                </div>
+              </div>
+              
+              {/* Contador de Vueltas */}
+              <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
+                <div className="text-xs text-gray-400 mb-1">VUELTA</div>
+                <div className="text-lg font-bold text-white font-mono">
+                  {Math.min(currentLap, totalLaps)} <span className="text-xs text-gray-400">/ {totalLaps}</span>
+                </div>
+              </div>
+
+              {/* Tiempo vuelta actual */}
+              <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
+                <div className="text-xs text-gray-400 mb-1">VUELTA ACTUAL</div>
+                <div className="text-sm font-bold text-cyan-300 font-mono">
+                  {formatTime(currentLapTime)}
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Botones de control */}
-            <div className="flex gap-2 pointer-events-auto">
-              <button
-                onClick={handlePause}
-                className="w-10 h-10 rounded-lg bg-black/60 backdrop-blur-sm border border-white/20
-                  flex items-center justify-center text-white text-lg
-                  active:bg-white/20 transition-colors"
-                aria-label="Pausar"
-              >
-                ⏸
-              </button>
-              <button
-                onClick={handleBack}
-                className="w-10 h-10 rounded-lg bg-black/60 backdrop-blur-sm border border-white/20
-                  flex items-center justify-center text-white text-lg
-                  active:bg-white/20 transition-colors"
-                aria-label="Volver al menú"
-              >
-                ✕
-              </button>
-            </div>
+          {/* Botones de control */}
+          <div className="absolute top-3 right-3 flex gap-2 pointer-events-auto mt-48">
+            <button
+              onClick={handlePause}
+              className="w-10 h-10 rounded-lg bg-black/60 backdrop-blur-sm border border-white/20
+                flex items-center justify-center text-white text-lg
+                active:bg-white/20 transition-colors"
+              aria-label="Pausar"
+            >
+              ⏸
+            </button>
+            <button
+              onClick={handleBack}
+              className="w-10 h-10 rounded-lg bg-black/60 backdrop-blur-sm border border-white/20
+                flex items-center justify-center text-white text-lg
+                active:bg-white/20 transition-colors"
+              aria-label="Volver al menú"
+            >
+              ✕
+            </button>
           </div>
 
           {/* Indicador de drift */}
@@ -198,8 +299,10 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
         </div>
       )}
 
-      {/* Controles táctiles */}
-      <TouchControls inputRef={inputRef} disabled={isPaused} />
+      {/* Controles táctiles (solo durante la carrera) */}
+      {screenState === 'racing' && (
+        <TouchControls inputRef={inputRef} disabled={isPaused} />
+      )}
 
       {/* Menú de pausa */}
       {isPaused && (

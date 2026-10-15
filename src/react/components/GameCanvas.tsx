@@ -21,6 +21,11 @@ interface GameCanvasProps {
     totalLaps: number;
     lastCheckpoint: number;
     totalCheckpoints: number;
+    raceTime: number;
+    lapTimes: number[];
+    currentLapTime: number;
+    raceStarted: boolean;
+    raceFinished: boolean;
   }) => void;
   onReady?: () => void;
   inputRef: React.MutableRefObject<InputState>;
