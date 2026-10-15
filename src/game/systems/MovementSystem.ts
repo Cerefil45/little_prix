@@ -5,6 +5,13 @@
 
 import Phaser from 'phaser';
 
+/**
+ * Clamp utilitario (independiente de Phaser para testing)
+ */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value));
+}
+
 export interface InputState {
   accelerating: boolean;
   braking: boolean;
@@ -65,7 +72,7 @@ export function updateMovement(
   }
 
   // Clamp velocidad
-  physics.speed = Phaser.Math.Clamp(physics.speed, -maxSpd * 0.3, maxSpd);
+  physics.speed = clamp(physics.speed, -maxSpd * 0.3, maxSpd);
 
   // Si la velocidad es muy baja, detener
   if (Math.abs(physics.speed) < 2 && !input.accelerating && !input.braking) {
@@ -74,7 +81,7 @@ export function updateMovement(
 
   // 2. Giro (proporcional a la velocidad)
   const speedRatio = Math.abs(physics.speed) / physics.maxSpeed;
-  const turnMultiplier = Phaser.Math.Clamp(speedRatio * 1.5, 0.3, 1.0);
+  const turnMultiplier = clamp(speedRatio * 1.5, 0.3, 1.0);
   let effectiveTurnRate = physics.turnRate * turnMultiplier * dt;
 
   // Dirección del giro

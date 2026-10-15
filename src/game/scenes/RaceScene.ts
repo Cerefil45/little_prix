@@ -7,6 +7,7 @@ import Phaser from 'phaser';
 import { Kart } from '../entities/Kart';
 import { CircuitOne, getTrackBoundaries, type TrackData } from '../tracks/CircuitOne';
 import type { InputState } from '../systems/MovementSystem';
+import { detectClosestCollision, type Segment } from '../systems/CollisionUtils';
 
 export type SceneEventCallback = (data: unknown) => void;
 
@@ -208,7 +209,7 @@ export class RaceScene extends Phaser.Scene {
 
   /**
    * Detecta colisiones manuales del kart con los bordes de la pista.
-   * Calcula la distancia más corta del kart a cada segmento de borde.
+   * Usa la utilidad de colisiones para encontrar la colisión más cercana.
    */
   private checkBoundaryCollisions(): void {
     if (!this.trackBoundaries || !this.kart.body) return;
@@ -217,65 +218,20 @@ export class RaceScene extends Phaser.Scene {
     const kartRadius = 18; // Radio del cuerpo circular del kart
     const collisionThreshold = kartRadius + 4; // Margen de colisión
 
-    const allSegments = [...this.trackBoundaries.inner, ...this.trackBoundaries.outer];
+    const allSegments: Segment[] = [...this.trackBoundaries.inner, ...this.trackBoundaries.outer];
 
-    for (const seg of allSegments) {
-      const dist = this.distancePointToSegment(kartPos.x, kartPos.y, seg.x1, seg.y1, seg.x2, seg.y2);
-      
-      if (dist < collisionThreshold) {
-        // Colisión detectada
-        this.kart.applyCollisionPenalty();
-        this.emitSceneEvent('collision');
+    const collision = detectClosestCollision(kartPos, collisionThreshold, allSegments);
 
-        // Calcular vector de empuje (desde el segmento hacia el kart)
-        const closestPoint = this.closestPointOnSegment(kartPos.x, kartPos.y, seg.x1, seg.y1, seg.x2, seg.y2);
-        const pushX = kartPos.x - closestPoint.x;
-        const pushY = kartPos.y - closestPoint.y;
-        const pushLen = Math.sqrt(pushX * pushX + pushY * pushY);
+    if (collision) {
+      // Colisión detectada
+      this.kart.applyCollisionPenalty();
+      this.emitSceneEvent('collision');
 
-        if (pushLen > 0) {
-          // Normalizar y aplicar empuje
-          const pushForce = (collisionThreshold - dist) * 0.5;
-          const normalizedPushX = (pushX / pushLen) * pushForce;
-          const normalizedPushY = (pushY / pushLen) * pushForce;
-          
-          this.kart.sprite.x += normalizedPushX;
-          this.kart.sprite.y += normalizedPushY;
-        }
-
-        // Solo procesamos la colisión más cercana por frame
-        break;
-      }
+      // Aplicar empuje para separar el kart del borde
+      const pushForce = (collisionThreshold - collision.distance) * 0.8;
+      this.kart.sprite.x += collision.pushVector.x * pushForce;
+      this.kart.sprite.y += collision.pushVector.y * pushForce;
     }
-  }
-
-  /**
-   * Calcula la distancia más corta de un punto a un segmento de línea.
-   */
-  private distancePointToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
-    const closest = this.closestPointOnSegment(px, py, x1, y1, x2, y2);
-    const dx = px - closest.x;
-    const dy = py - closest.y;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-
-  /**
-   * Encuentra el punto más cercano en un segmento a un punto dado.
-   */
-  private closestPointOnSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const lenSq = dx * dx + dy * dy;
-
-    if (lenSq === 0) return { x: x1, y: y1 };
-
-    let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
-    t = Math.max(0, Math.min(1, t));
-
-    return {
-      x: x1 + t * dx,
-      y: y1 + t * dy,
-    };
   }
 
   /**
