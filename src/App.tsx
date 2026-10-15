@@ -1,4 +1,9 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
+import { StartScreen } from './react/screens/StartScreen';
+
+const RaceScreen = lazy(() =>
+  import('./react/screens/RaceScreen').then(m => ({ default: m.RaceScreen }))
+);
 
 const sections = [
   { id: 'overview', label: '0. Resumen', icon: '🏁' },
@@ -18,6 +23,25 @@ const sections = [
 export default function App() {
   const [activeSection, setActiveSection] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [screen, setScreen] = useState<'docs' | 'start' | 'race'>('docs');
+
+  // Si estamos en la pantalla de carrera, renderizar solo el juego
+  if (screen === 'race') {
+    return (
+      <Suspense fallback={
+        <div className="fixed inset-0 bg-gray-950 flex items-center justify-center">
+          <div className="text-white text-xl">Cargando circuito...</div>
+        </div>
+      }>
+        <RaceScreen onBack={() => setScreen('start')} />
+      </Suspense>
+    );
+  }
+
+  // Si estamos en la pantalla de inicio
+  if (screen === 'start') {
+    return <StartScreen onPlay={() => setScreen('race')} onBack={() => setScreen('docs')} />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 font-sans">
@@ -31,12 +55,21 @@ export default function App() {
               <p className="text-xs text-gray-400">Plan Técnico — Fase de Diseño</p>
             </div>
           </div>
-          <button
-            className="md:hidden p-2 rounded-lg bg-gray-800 text-gray-300"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          >
-            ☰
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setScreen('start')}
+              className="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition-colors"
+            >
+              🎮 Jugar
+            </button>
+            <button
+              className="md:hidden p-2 rounded-lg bg-gray-800 text-gray-300"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              aria-label="Abrir menú de navegación"
+            >
+              ☰
+            </button>
+          </div>
           <div className="hidden md:flex items-center gap-2 text-xs text-gray-500">
             <span className="px-2 py-1 bg-green-900/50 text-green-400 rounded">React</span>
             <span className="px-2 py-1 bg-blue-900/50 text-blue-400 rounded">Phaser 3</span>
