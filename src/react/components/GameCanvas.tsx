@@ -17,6 +17,10 @@ interface GameCanvasProps {
     driftCharge: number;
     isOffTrack: boolean;
     position: { x: number; y: number };
+    currentLap: number;
+    totalLaps: number;
+    lastCheckpoint: number;
+    totalCheckpoints: number;
   }) => void;
   onReady?: () => void;
   inputRef: React.MutableRefObject<InputState>;

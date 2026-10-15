@@ -29,6 +29,12 @@ export class RaceScene extends Phaser.Scene {
     inner: Array<{ x1: number; y1: number; x2: number; y2: number }>;
     outer: Array<{ x1: number; y1: number; x2: number; y2: number }>;
   } | null = null;
+  
+  // Sistema de vueltas
+  private currentLap: number = 1;
+  private totalLaps: number = 3;
+  private lastCheckpoint: number = -1;
+  private checkpoints: Array<{ x: number; y: number; radius: number }> = [];
 
   constructor() {
     super({ key: 'RaceScene' });
@@ -79,6 +85,9 @@ export class RaceScene extends Phaser.Scene {
 
     // Configurar colisiones con bordes
     this.setupBoundaryCollisions();
+
+    // Inicializar checkpoints para sistema de vueltas
+    this.setupCheckpoints();
 
     // Input de teclado
     this.setupKeyboardInput();
@@ -208,6 +217,80 @@ export class RaceScene extends Phaser.Scene {
   }
 
   /**
+   * Configura los checkpoints para el sistema de vueltas.
+   * Distribuye checkpoints uniformemente a lo largo de la pista.
+   */
+  private setupCheckpoints(): void {
+    this.checkpoints = [];
+    this.currentLap = 1;
+    this.lastCheckpoint = -1;
+    this.totalLaps = this.track.totalLaps || 3;
+
+    // Crear checkpoints en posiciones de los waypoints (cada 6 waypoints aproximadamente)
+    const waypoints = this.track.waypoints;
+    const checkpointInterval = Math.max(1, Math.floor(waypoints.length / 6));
+    
+    for (let i = 0; i < waypoints.length; i += checkpointInterval) {
+      const wp = waypoints[i];
+      this.checkpoints.push({
+        x: wp.x,
+        y: wp.y,
+        radius: wp.width * 0.6 // Radio del checkpoint (60% del ancho de pista)
+      });
+    }
+  }
+
+  /**
+   * Verifica si el kart ha cruzado algún checkpoint.
+   */
+  private checkCheckpoints(): void {
+    if (!this.kart || this.checkpoints.length === 0) return;
+
+    const kartPos = this.kart.getPosition();
+    const nextCheckpoint = (this.lastCheckpoint + 1) % this.checkpoints.length;
+    const checkpoint = this.checkpoints[nextCheckpoint];
+
+    // Calcular distancia al siguiente checkpoint
+    const dx = kartPos.x - checkpoint.x;
+    const dy = kartPos.y - checkpoint.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Si está dentro del radio del checkpoint
+    if (distance < checkpoint.radius) {
+      this.lastCheckpoint = nextCheckpoint;
+
+      // Si completó todos los checkpoints, completar vuelta
+      if (nextCheckpoint === 0 && this.lastCheckpoint === this.checkpoints.length - 1) {
+        this.completeLap();
+      }
+
+      this.emitSceneEvent('checkpoint', {
+        checkpoint: nextCheckpoint,
+        total: this.checkpoints.length
+      });
+    }
+  }
+
+  /**
+   * Completa una vuelta.
+   */
+  private completeLap(): void {
+    this.emitSceneEvent('lap', {
+      lap: this.currentLap,
+      total: this.totalLaps
+    });
+
+    this.currentLap++;
+
+    // Si completó todas las vueltas, emitir evento de carrera terminada
+    if (this.currentLap > this.totalLaps) {
+      this.emitSceneEvent('raceFinished', {
+        totalLaps: this.totalLaps
+      });
+    }
+  }
+
+  /**
    * Detecta colisiones manuales del kart con los bordes de la pista.
    * Usa la utilidad de colisiones para encontrar la colisión más cercana.
    */
@@ -216,22 +299,61 @@ export class RaceScene extends Phaser.Scene {
 
     const kartPos = this.kart.getPosition();
     const kartRadius = 18; // Radio del cuerpo circular del kart
-    const collisionThreshold = kartRadius + 4; // Margen de colisión
+    const collisionThreshold = kartRadius + 2; // Margen de colisión reducido
 
     const allSegments: Segment[] = [...this.trackBoundaries.inner, ...this.trackBoundaries.outer];
 
     const collision = detectClosestCollision(kartPos, collisionThreshold, allSegments);
 
     if (collision) {
-      // Colisión detectada
-      this.kart.applyCollisionPenalty();
-      this.emitSceneEvent('collision');
+      // Solo aplicar penalización si la velocidad es significativa
+      if (Math.abs(this.kart.physics.speed) > 50) {
+        this.kart.applyCollisionPenalty();
+        this.emitSceneEvent('collision');
+      }
 
-      // Aplicar empuje para separar el kart del borde
-      const pushForce = (collisionThreshold - collision.distance) * 0.8;
+      // Aplicar empuje para separar el kart del borde (más suave)
+      const pushForce = (collisionThreshold - collision.distance) * 0.6;
       this.kart.sprite.x += collision.pushVector.x * pushForce;
       this.kart.sprite.y += collision.pushVector.y * pushForce;
     }
+  }
+
+  /**
+   * Verifica si un punto está fuera de los límites de la pista.
+   * Un punto está en la pista si está dentro del polígono exterior Y fuera del polígono interior.
+   */
+  private isPointOffTrack(x: number, y: number): boolean {
+    if (!this.trackBoundaries) return false;
+
+    const isInsideOuter = this.isPointInPolygon(x, y, this.trackBoundaries.outer);
+    const isInsideInner = this.isPointInPolygon(x, y, this.trackBoundaries.inner);
+
+    // Está en la pista si está dentro del exterior Y fuera del interior
+    return !(isInsideOuter && !isInsideInner);
+  }
+
+  /**
+   * Algoritmo de punto en polígono usando ray casting.
+   * Retorna true si el punto (x, y) está dentro del polígono definido por los segmentos.
+   */
+  private isPointInPolygon(x: number, y: number, segments: Segment[]): boolean {
+    if (segments.length === 0) return false;
+
+    let inside = false;
+    const n = segments.length;
+
+    for (let i = 0, j = n - 1; i < n; j = i++) {
+      const xi = segments[i].x1, yi = segments[i].y1;
+      const xj = segments[j].x1, yj = segments[j].y1;
+
+      const intersect = ((yi > y) !== (yj > y)) &&
+                        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      
+      if (intersect) inside = !inside;
+    }
+
+    return inside;
   }
 
   /**
@@ -268,13 +390,12 @@ export class RaceScene extends Phaser.Scene {
       this.checkBoundaryCollisions();
     }
 
-    // Verificar si está fuera de pista (simplificado: distancia al centro del óvalo)
+    // Verificar si está fuera de pista usando los límites reales
     const pos = this.kart.getPosition();
-    const cx = 800, cy = 600, rx = 550, ry = 380;
-    const normalizedDist = Math.sqrt(
-      Math.pow((pos.x - cx) / rx, 2) + Math.pow((pos.y - cy) / ry, 2)
-    );
-    this.kart.isOffTrack = normalizedDist > 1.15 || normalizedDist < 0.75;
+    this.kart.isOffTrack = this.isPointOffTrack(pos.x, pos.y);
+
+    // Verificar checkpoints para sistema de vueltas
+    this.checkCheckpoints();
 
     // Emitir estado para el HUD
     this.emitSceneEvent('stateUpdate', {
@@ -284,6 +405,10 @@ export class RaceScene extends Phaser.Scene {
       driftCharge: this.kart.physics.driftCharge,
       isOffTrack: this.kart.isOffTrack,
       position: pos,
+      currentLap: this.currentLap,
+      totalLaps: this.totalLaps,
+      lastCheckpoint: this.lastCheckpoint,
+      totalCheckpoints: this.checkpoints.length
     });
   }
 
@@ -338,6 +463,9 @@ export class RaceScene extends Phaser.Scene {
       drifting: false,
     };
     this.keyboardInput = {};
+    // Reset vueltas
+    this.currentLap = 1;
+    this.lastCheckpoint = -1;
     this.emitSceneEvent('restarted');
   }
 

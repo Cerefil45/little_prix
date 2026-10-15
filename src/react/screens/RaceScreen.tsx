@@ -21,6 +21,8 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
   const [driftCharge, setDriftCharge] = useState(0);
   const [isOffTrack, setIsOffTrack] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const [currentLap, setCurrentLap] = useState(1);
+  const [totalLaps, setTotalLaps] = useState(3);
   const inputRef = useRef<InputState>({
     accelerating: false,
     braking: false,
@@ -40,6 +42,10 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     driftCharge: number;
     isOffTrack: boolean;
     position: { x: number; y: number };
+    currentLap: number;
+    totalLaps: number;
+    lastCheckpoint: number;
+    totalCheckpoints: number;
   }) => {
     const now = performance.now();
     if (now - lastUpdateRef.current < 100) return; // Actualizar cada 100ms máximo
@@ -49,6 +55,8 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     setIsDrifting(state.isDrifting);
     setDriftCharge(state.driftCharge);
     setIsOffTrack(state.isOffTrack);
+    setCurrentLap(state.currentLap);
+    setTotalLaps(state.totalLaps);
   }, []);
 
   const handleReady = useCallback(() => {
@@ -86,6 +94,7 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     setIsDrifting(false);
     setDriftCharge(0);
     setIsOffTrack(false);
+    setCurrentLap(1);
   };
 
   const handleBack = () => {
@@ -126,6 +135,14 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
                     backgroundColor: speedPercent > 80 ? '#ef4444' : speedPercent > 50 ? '#f59e0b' : '#22c55e',
                   }}
                 />
+              </div>
+            </div>
+
+            {/* Contador de Vueltas */}
+            <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
+              <div className="text-xs text-gray-400 mb-1">VUELTA</div>
+              <div className="text-xl font-bold text-white font-mono">
+                {Math.min(currentLap, totalLaps)} <span className="text-xs text-gray-400">/ {totalLaps}</span>
               </div>
             </div>
 
