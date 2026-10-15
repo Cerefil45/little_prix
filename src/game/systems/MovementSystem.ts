@@ -3,8 +3,6 @@
  * Maneja aceleración, giro, fricción y derrape.
  */
 
-import Phaser from 'phaser';
-
 /**
  * Clamp utilitario (independiente de Phaser para testing)
  */
