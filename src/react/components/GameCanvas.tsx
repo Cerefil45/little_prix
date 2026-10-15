@@ -29,9 +29,15 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
   const animFrameRef = useRef<number>(0);
 
   // Sincronizar input táctil con la escena
+  // Solo actualizamos cuando el input ha cambiado para evitar llamadas innecesarias
+  const lastInputRef = useRef<string>('');
   const syncInput = useCallback(() => {
     if (sceneRef.current) {
-      sceneRef.current.setTouchInput(inputRef.current);
+      const inputStr = JSON.stringify(inputRef.current);
+      if (inputStr !== lastInputRef.current) {
+        lastInputRef.current = inputStr;
+        sceneRef.current.setTouchInput(inputRef.current);
+      }
     }
     animFrameRef.current = requestAnimationFrame(syncInput);
   }, [inputRef, sceneRef]);
@@ -44,9 +50,12 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
     const game = new Phaser.Game(config);
     gameRef.current = game;
 
-    // Esperar a que la escena esté lista
-    game.events.on('ready', () => {
+    // Esperar a que la escena esté creada
+    // Usamos scene.events 'create' que se dispara cuando la escena termina su método create()
+    const setupScene = () => {
       const scene = game.scene.getScene('RaceScene') as RaceScene;
+      if (!scene) return;
+      
       sceneRef.current = scene;
 
       // Registrar callbacks
@@ -59,6 +68,14 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
 
       // Iniciar sync de input
       animFrameRef.current = requestAnimationFrame(syncInput);
+    };
+
+    // Escuchar el evento 'create' de la escena
+    game.events.on('ready', () => {
+      const scene = game.scene.getScene('RaceScene') as RaceScene;
+      if (scene) {
+        scene.events.once('create', setupScene);
+      }
     });
 
     return () => {

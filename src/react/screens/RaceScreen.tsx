@@ -31,6 +31,8 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
 
   const sceneRef = useRef<RaceScene | null>(null);
 
+  // Throttle para evitar 60 re-renders por segundo
+  const lastUpdateRef = useRef<number>(0);
   const handleStateUpdate = useCallback((state: {
     speed: number;
     maxSpeed: number;
@@ -39,6 +41,10 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     isOffTrack: boolean;
     position: { x: number; y: number };
   }) => {
+    const now = performance.now();
+    if (now - lastUpdateRef.current < 100) return; // Actualizar cada 100ms máximo
+    lastUpdateRef.current = now;
+    
     setSpeed(state.speed);
     setIsDrifting(state.isDrifting);
     setDriftCharge(state.driftCharge);

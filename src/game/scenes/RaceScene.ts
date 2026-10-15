@@ -14,7 +14,6 @@ export class RaceScene extends Phaser.Scene {
   private kart!: Kart;
   private track!: TrackData;
   private trackGraphics!: Phaser.GameObjects.Graphics;
-  private boundaryBodies: Phaser.GameObjects.Rectangle[] = [];
   private inputState: InputState = {
     accelerating: false,
     braking: false,
@@ -25,6 +24,10 @@ export class RaceScene extends Phaser.Scene {
   private keyboardInput: Record<string, boolean> = {};
   private isPaused: boolean = false;
   private eventCallbacks: Map<string, SceneEventCallback[]> = new Map();
+  private trackBoundaries: {
+    inner: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+    outer: Array<{ x1: number; y1: number; x2: number; y2: number }>;
+  } | null = null;
 
   constructor() {
     super({ key: 'RaceScene' });
@@ -191,37 +194,88 @@ export class RaceScene extends Phaser.Scene {
 
   /**
    * Configura las colisiones con los bordes del circuito.
+   * NOTA: Arcade Physics no soporta rotación en cuerpos estáticos.
+   * Usamos detección manual basada en distancia a los segmentos.
    */
   private setupBoundaryCollisions(): void {
     const boundaries = getTrackBoundaries(this.track);
+    this.trackBoundaries = boundaries;
+    
+    // No creamos cuerpos físicos para los bordes porque Arcade Physics
+    // no soporta rotación en cuerpos estáticos. En su lugar, detectamos
+    // colisiones manualmente en el update().
+  }
 
-    // Crear cuerpos estáticos para cada segmento del borde
-    const allSegments = [...boundaries.inner, ...boundaries.outer];
+  /**
+   * Detecta colisiones manuales del kart con los bordes de la pista.
+   * Calcula la distancia más corta del kart a cada segmento de borde.
+   */
+  private checkBoundaryCollisions(): void {
+    if (!this.trackBoundaries || !this.kart.body) return;
+
+    const kartPos = this.kart.getPosition();
+    const kartRadius = 18; // Radio del cuerpo circular del kart
+    const collisionThreshold = kartRadius + 4; // Margen de colisión
+
+    const allSegments = [...this.trackBoundaries.inner, ...this.trackBoundaries.outer];
 
     for (const seg of allSegments) {
-      const midX = (seg.x1 + seg.x2) / 2;
-      const midY = (seg.y1 + seg.y2) / 2;
-      const dx = seg.x2 - seg.x1;
-      const dy = seg.y2 - seg.y1;
-      const length = Math.sqrt(dx * dx + dy * dy);
-      const angle = Math.atan2(dy, dx);
+      const dist = this.distancePointToSegment(kartPos.x, kartPos.y, seg.x1, seg.y1, seg.x2, seg.y2);
+      
+      if (dist < collisionThreshold) {
+        // Colisión detectada
+        this.kart.applyCollisionPenalty();
+        this.emitSceneEvent('collision');
 
-      const rect = this.add.rectangle(midX, midY, length, 8);
-      rect.setVisible(false);
-      this.physics.add.existing(rect, true); // true = static body
-      rect.setRotation(angle);
-      this.boundaryBodies.push(rect);
-    }
+        // Calcular vector de empuje (desde el segmento hacia el kart)
+        const closestPoint = this.closestPointOnSegment(kartPos.x, kartPos.y, seg.x1, seg.y1, seg.x2, seg.y2);
+        const pushX = kartPos.x - closestPoint.x;
+        const pushY = kartPos.y - closestPoint.y;
+        const pushLen = Math.sqrt(pushX * pushX + pushY * pushY);
 
-    // Colisión del kart con los bordes
-    if (this.kart.body) {
-      for (const boundary of this.boundaryBodies) {
-        this.physics.add.collider(this.kart.sprite, boundary, () => {
-          this.kart.applyCollisionPenalty();
-          this.emitSceneEvent('collision');
-        });
+        if (pushLen > 0) {
+          // Normalizar y aplicar empuje
+          const pushForce = (collisionThreshold - dist) * 0.5;
+          const normalizedPushX = (pushX / pushLen) * pushForce;
+          const normalizedPushY = (pushY / pushLen) * pushForce;
+          
+          this.kart.sprite.x += normalizedPushX;
+          this.kart.sprite.y += normalizedPushY;
+        }
+
+        // Solo procesamos la colisión más cercana por frame
+        break;
       }
     }
+  }
+
+  /**
+   * Calcula la distancia más corta de un punto a un segmento de línea.
+   */
+  private distancePointToSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+    const closest = this.closestPointOnSegment(px, py, x1, y1, x2, y2);
+    const dx = px - closest.x;
+    const dy = py - closest.y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  /**
+   * Encuentra el punto más cercano en un segmento a un punto dado.
+   */
+  private closestPointOnSegment(px: number, py: number, x1: number, y1: number, x2: number, y2: number): { x: number; y: number } {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lenSq = dx * dx + dy * dy;
+
+    if (lenSq === 0) return { x: x1, y: y1 };
+
+    let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+    t = Math.max(0, Math.min(1, t));
+
+    return {
+      x: x1 + t * dx,
+      y: y1 + t * dy,
+    };
   }
 
   /**
@@ -252,6 +306,11 @@ export class RaceScene extends Phaser.Scene {
 
     // Actualizar kart
     this.kart.update(dt, combinedInput);
+
+    // Detección manual de colisiones con bordes
+    if (this.trackBoundaries && this.kart.body) {
+      this.checkBoundaryCollisions();
+    }
 
     // Verificar si está fuera de pista (simplificado: distancia al centro del óvalo)
     const pos = this.kart.getPosition();
@@ -285,6 +344,8 @@ export class RaceScene extends Phaser.Scene {
   pauseRace(): void {
     this.isPaused = true;
     this.physics.world.pause();
+    // Reset keyboard input al pausar
+    this.keyboardInput = {};
     this.emitSceneEvent('paused');
   }
 
@@ -320,6 +381,7 @@ export class RaceScene extends Phaser.Scene {
       steerRight: false,
       drifting: false,
     };
+    this.keyboardInput = {};
     this.emitSceneEvent('restarted');
   }
 
@@ -330,7 +392,7 @@ export class RaceScene extends Phaser.Scene {
     if (this.kart) {
       this.kart.destroy();
     }
-    this.boundaryBodies.forEach(b => b.destroy());
     this.eventCallbacks.clear();
+    this.trackBoundaries = null;
   }
 }
