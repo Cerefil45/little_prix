@@ -26,6 +26,8 @@ interface GameCanvasProps {
     currentLapTime: number;
     raceStarted: boolean;
     raceFinished: boolean;
+    positions: Array<{ name: string; isPlayer: boolean; lap: number; progress: number }>;
+    playerPosition: number;
   }) => void;
   onReady?: () => void;
   inputRef: React.MutableRefObject<InputState>;

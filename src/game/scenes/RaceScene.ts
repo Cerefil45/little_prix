@@ -5,9 +5,11 @@
 
 import Phaser from 'phaser';
 import { Kart } from '../entities/Kart';
+import { AIKart } from '../entities/AIKart';
 import { CircuitOne, getTrackBoundaries, type TrackData } from '../tracks/CircuitOne';
 import type { InputState } from '../systems/MovementSystem';
 import { detectClosestCollision, type Segment } from '../systems/CollisionUtils';
+import type { AIConfig } from '../systems/AISystem';
 
 export type SceneEventCallback = (data: unknown) => void;
 
@@ -42,6 +44,10 @@ export class RaceScene extends Phaser.Scene {
   private currentLapTime: number = 0;     // tiempo de la vuelta actual
   private raceStarted: boolean = false;   // false durante countdown
   private raceFinished: boolean = false;  // true al terminar la carrera
+  
+  // Rivales IA
+  private aiKarts: AIKart[] = [];
+  private positions: Array<{ name: string; isPlayer: boolean; lap: number; progress: number }> = [];
 
   constructor() {
     super({ key: 'RaceScene' });
@@ -78,13 +84,16 @@ export class RaceScene extends Phaser.Scene {
     // Dibujar circuito
     this.drawTrack();
 
-    // Crear kart
+    // Crear kart del jugador
     this.kart = new Kart(
       this,
       this.track.startX,
       this.track.startY,
       this.track.startAngle
     );
+
+    // Crear rivales IA
+    this.createAIKarts();
 
     // Configurar cámara
     this.cameras.main.startFollow(this.kart.sprite, true, 0.08, 0.08);
@@ -248,6 +257,69 @@ export class RaceScene extends Phaser.Scene {
   }
 
   /**
+   * Crea los karts de IA (rivales).
+   */
+  private createAIKarts(): void {
+    this.aiKarts = [];
+    
+    const aiConfigs: Array<{ name: string; color: number; config: AIConfig; offset: number }> = [
+      {
+        name: 'Rojo Rápido',
+        color: 0xff6b6b,
+        config: { skillLevel: 0.85, maxSpeedMultiplier: 0.95, lookAheadDistance: 3 },
+        offset: 1
+      },
+      {
+        name: 'Azul Veloz',
+        color: 0x4ecdc4,
+        config: { skillLevel: 0.75, maxSpeedMultiplier: 0.88, lookAheadDistance: 2 },
+        offset: 2
+      },
+      {
+        name: 'Verde Ágil',
+        color: 0x95e1d3,
+        config: { skillLevel: 0.65, maxSpeedMultiplier: 0.82, lookAheadDistance: 2 },
+        offset: 3
+      }
+    ];
+
+    // Posicionar rivales detrás del jugador
+    const startWaypoint = this.track.waypoints[0];
+    const angle = this.track.startAngle;
+    
+    aiConfigs.forEach((ai, index) => {
+      // Posicionar en línea detrás del jugador
+      const distanceBehind = 60 + (index * 50);
+      const offsetX = Math.cos(angle + Math.PI) * distanceBehind;
+      const offsetY = Math.sin(angle + Math.PI) * distanceBehind;
+      
+      // Desplazamiento lateral para que no estén en línea recta
+      const lateralOffset = (index % 2 === 0 ? 1 : -1) * 30;
+      const lateralX = Math.cos(angle + Math.PI / 2) * lateralOffset;
+      const lateralY = Math.sin(angle + Math.PI / 2) * lateralOffset;
+      
+      const x = startWaypoint.x + offsetX + lateralX;
+      const y = startWaypoint.y + offsetY + lateralY;
+      
+      const aiKart = new AIKart(
+        this,
+        x,
+        y,
+        angle,
+        this.track.waypoints,
+        ai.config,
+        ai.name,
+        ai.color
+      );
+      
+      // Iniciar en waypoint correspondiente
+      aiKart.aiState.currentWaypointIndex = ai.offset;
+      
+      this.aiKarts.push(aiKart);
+    });
+  }
+
+  /**
    * Verifica si el kart ha cruzado algún checkpoint.
    */
   private checkCheckpoints(): void {
@@ -343,6 +415,70 @@ export class RaceScene extends Phaser.Scene {
   }
 
   /**
+   * Verifica colisiones de un kart de IA con los bordes.
+   */
+  private checkAIBoundaryCollisions(aiKart: AIKart): void {
+    if (!this.trackBoundaries || !aiKart.body) return;
+
+    const kartPos = aiKart.getPosition();
+    const kartRadius = 18;
+    const collisionThreshold = kartRadius + 2;
+
+    const allSegments: Segment[] = [...this.trackBoundaries.inner, ...this.trackBoundaries.outer];
+    const collision = detectClosestCollision(kartPos, collisionThreshold, allSegments);
+
+    if (collision) {
+      if (Math.abs(aiKart.physics.speed) > 50) {
+        aiKart.applyCollisionPenalty();
+      }
+
+      const pushForce = (collisionThreshold - collision.distance) * 0.6;
+      aiKart.sprite.x += collision.pushVector.x * pushForce;
+      aiKart.sprite.y += collision.pushVector.y * pushForce;
+    }
+  }
+
+  /**
+   * Verifica colisiones entre karts (jugador vs IA, IA vs IA).
+   */
+  private checkKartCollisions(): void {
+    const allKarts = [this.kart, ...this.aiKarts];
+    const kartRadius = 18;
+    const collisionDistance = kartRadius * 2;
+
+    for (let i = 0; i < allKarts.length; i++) {
+      for (let j = i + 1; j < allKarts.length; j++) {
+        const kart1 = allKarts[i];
+        const kart2 = allKarts[j];
+        
+        const pos1 = kart1.getPosition();
+        const pos2 = kart2.getPosition();
+        
+        const dx = pos2.x - pos1.x;
+        const dy = pos2.y - pos1.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < collisionDistance && distance > 0) {
+          // Colisión detectada
+          const overlap = collisionDistance - distance;
+          const pushX = (dx / distance) * overlap * 0.5;
+          const pushY = (dy / distance) * overlap * 0.5;
+
+          // Empujar ambos karts en direcciones opuestas
+          kart1.sprite.x -= pushX;
+          kart1.sprite.y -= pushY;
+          kart2.sprite.x += pushX;
+          kart2.sprite.y += pushY;
+
+          // Aplicar penalización de velocidad
+          kart1.applyCollisionPenalty();
+          kart2.applyCollisionPenalty();
+        }
+      }
+    }
+  }
+
+  /**
    * Verifica si un punto está fuera de los límites de la pista.
    * Un punto está en la pista si está dentro del polígono exterior Y fuera del polígono interior.
    */
@@ -417,10 +553,25 @@ export class RaceScene extends Phaser.Scene {
       drifting: false,
     };
 
-    // Actualizar kart
+    // Actualizar kart del jugador
     this.kart.update(dt, effectiveInput);
 
-    // Detección manual de colisiones con bordes
+    // Actualizar karts de IA
+    if (this.raceStarted) {
+      this.aiKarts.forEach(aiKart => {
+        aiKart.updateAI(dt);
+        
+        // Colisiones de IA con bordes
+        if (this.trackBoundaries && aiKart.body) {
+          this.checkAIBoundaryCollisions(aiKart);
+        }
+      });
+
+      // Colisiones kart-kart
+      this.checkKartCollisions();
+    }
+
+    // Detección manual de colisiones con bordes (jugador)
     if (this.trackBoundaries && this.kart.body) {
       this.checkBoundaryCollisions();
     }
@@ -431,6 +582,9 @@ export class RaceScene extends Phaser.Scene {
 
     // Verificar checkpoints para sistema de vueltas
     this.checkCheckpoints();
+
+    // Calcular posiciones de todos los karts
+    this.calculatePositions();
 
     // Emitir estado para el HUD
     this.emitSceneEvent('stateUpdate', {
@@ -448,8 +602,45 @@ export class RaceScene extends Phaser.Scene {
       lapTimes: [...this.lapTimes],
       currentLapTime: this.currentLapTime,
       raceStarted: this.raceStarted,
-      raceFinished: this.raceFinished
+      raceFinished: this.raceFinished,
+      positions: this.positions,
+      playerPosition: this.getPlayerPosition()
     });
+  }
+
+  /**
+   * Calcula las posiciones de todos los karts en la carrera.
+   */
+  private calculatePositions(): void {
+    // Crear array con todos los karts y su progreso
+    const kartProgress = [
+      {
+        name: 'Jugador',
+        isPlayer: true,
+        lap: this.currentLap,
+        progress: this.lastCheckpoint + (this.currentLap - 1) * this.checkpoints.length
+      },
+      ...this.aiKarts.map(ai => ({
+        name: ai.name,
+        isPlayer: false,
+        lap: ai.aiState.currentWaypointIndex < this.checkpoints.length ? 1 : 
+              ai.aiState.currentWaypointIndex < this.checkpoints.length * 2 ? 2 : 3,
+        progress: ai.aiState.currentWaypointIndex
+      }))
+    ];
+
+    // Ordenar por progreso (mayor = mejor posición)
+    kartProgress.sort((a, b) => b.progress - a.progress);
+
+    this.positions = kartProgress;
+  }
+
+  /**
+   * Obtiene la posición del jugador (1-4).
+   */
+  private getPlayerPosition(): number {
+    const playerIndex = this.positions.findIndex(p => p.isPlayer);
+    return playerIndex + 1;
   }
 
   /**
@@ -511,6 +702,35 @@ export class RaceScene extends Phaser.Scene {
     this.raceTime = 0;
     this.currentLapTime = 0;
     this.lapTimes = [];
+    
+    // Reset rivales IA
+    this.aiKarts.forEach((aiKart, index) => {
+      const startWaypoint = this.track.waypoints[0];
+      const angle = this.track.startAngle;
+      const distanceBehind = 60 + (index * 50);
+      const offsetX = Math.cos(angle + Math.PI) * distanceBehind;
+      const offsetY = Math.sin(angle + Math.PI) * distanceBehind;
+      const lateralOffset = (index % 2 === 0 ? 1 : -1) * 30;
+      const lateralX = Math.cos(angle + Math.PI / 2) * lateralOffset;
+      const lateralY = Math.sin(angle + Math.PI / 2) * lateralOffset;
+      
+      aiKart.sprite.setPosition(
+        startWaypoint.x + offsetX + lateralX,
+        startWaypoint.y + offsetY + lateralY
+      );
+      aiKart.physics.speed = 0;
+      aiKart.physics.angle = angle;
+      aiKart.physics.isDrifting = false;
+      aiKart.physics.driftCharge = 0;
+      aiKart.finished = false;
+      aiKart.aiState.currentWaypointIndex = index + 1;
+      aiKart.aiState.stuckTimer = 0;
+      
+      if (aiKart.body) {
+        aiKart.body.setVelocity(0, 0);
+      }
+    });
+    
     this.emitSceneEvent('restarted');
   }
 

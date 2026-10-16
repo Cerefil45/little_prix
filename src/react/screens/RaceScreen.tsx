@@ -35,6 +35,7 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
   const [screenState, setScreenState] = useState<ScreenState>('countdown');
   const [raceResult, setRaceResult] = useState<RaceResult | null>(null);
   const [trackName, setTrackName] = useState('');
+  const [playerPosition, setPlayerPosition] = useState(1);
   
   const inputRef = useRef<InputState>({
     accelerating: false,
@@ -64,6 +65,8 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     currentLapTime: number;
     raceStarted: boolean;
     raceFinished: boolean;
+    positions: Array<{ name: string; isPlayer: boolean; lap: number; progress: number }>;
+    playerPosition: number;
   }) => {
     const now = performance.now();
     if (now - lastUpdateRef.current < 100) return;
@@ -78,6 +81,7 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     setRaceTime(state.raceTime);
     setCurrentLapTime(state.currentLapTime);
     setLapTimes(state.lapTimes);
+    setPlayerPosition(state.playerPosition);
   }, []);
 
   const handleReady = useCallback(() => {
@@ -235,6 +239,19 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
                 <div className="text-xs text-gray-400 mb-1">VUELTA</div>
                 <div className="text-lg font-bold text-white font-mono">
                   {Math.min(currentLap, totalLaps)} <span className="text-xs text-gray-400">/ {totalLaps}</span>
+                </div>
+              </div>
+
+              {/* Posición en carrera */}
+              <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
+                <div className="text-xs text-gray-400 mb-1">POSICIÓN</div>
+                <div className={`text-2xl font-bold font-mono ${
+                  playerPosition === 1 ? 'text-yellow-400' :
+                  playerPosition === 2 ? 'text-gray-300' :
+                  playerPosition === 3 ? 'text-orange-400' :
+                  'text-gray-500'
+                }`}>
+                  {playerPosition}º
                 </div>
               </div>
 
