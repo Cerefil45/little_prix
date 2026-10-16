@@ -74,42 +74,60 @@ export class RaceScene extends Phaser.Scene {
    * Inicializa la escena con datos del circuito.
    */
   init(data: { track?: TrackData }): void {
+    console.log('RaceScene: init() called');
     this.track = data.track || CircuitOne;
+    console.log('RaceScene: Track initialized:', this.track.name);
   }
 
   create(): void {
-    // Fondo
-    this.cameras.main.setBackgroundColor('#2d5a27');
+    console.log('RaceScene: create() started');
+    
+    try {
+      // Fondo
+      this.cameras.main.setBackgroundColor('#2d5a27');
+      console.log('RaceScene: Background set');
 
-    // Dibujar circuito
-    this.drawTrack();
+      // Dibujar circuito
+      this.drawTrack();
+      console.log('RaceScene: Track drawn');
 
-    // Crear kart del jugador
-    this.kart = new Kart(
-      this,
-      this.track.startX,
-      this.track.startY,
-      this.track.startAngle
-    );
+      // Crear kart del jugador
+      this.kart = new Kart(
+        this,
+        this.track.startX,
+        this.track.startY,
+        this.track.startAngle
+      );
+      console.log('RaceScene: Player kart created');
 
-    // Crear rivales IA
-    this.createAIKarts();
+      // Crear rivales IA
+      this.createAIKarts();
+      console.log('RaceScene: AI karts created');
 
-    // Configurar cámara
-    this.cameras.main.startFollow(this.kart.sprite, true, 0.08, 0.08);
-    this.cameras.main.setZoom(1.2);
+      // Configurar cámara
+      this.cameras.main.startFollow(this.kart.sprite, true, 0.08, 0.08);
+      this.cameras.main.setZoom(1.2);
+      console.log('RaceScene: Camera configured');
 
-    // Configurar colisiones con bordes
-    this.setupBoundaryCollisions();
+      // Configurar colisiones con bordes
+      this.setupBoundaryCollisions();
+      console.log('RaceScene: Boundary collisions setup');
 
-    // Inicializar checkpoints para sistema de vueltas
-    this.setupCheckpoints();
+      // Inicializar checkpoints para sistema de vueltas
+      this.setupCheckpoints();
+      console.log('RaceScene: Checkpoints setup');
 
-    // Input de teclado
-    this.setupKeyboardInput();
+      // Input de teclado
+      this.setupKeyboardInput();
+      console.log('RaceScene: Keyboard input setup');
 
-    // Emitir evento de escena lista
-    this.emitSceneEvent('ready');
+      // Emitir evento de escena lista
+      console.log('RaceScene: Emitting ready event');
+      this.emitSceneEvent('ready');
+      console.log('RaceScene: create() completed successfully');
+    } catch (error) {
+      console.error('RaceScene: Error in create():', error);
+    }
   }
 
   /**
