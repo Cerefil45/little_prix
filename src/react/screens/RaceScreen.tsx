@@ -7,6 +7,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { GameCanvas } from '../components/GameCanvas';
 import { TouchControls } from '../components/TouchControls';
 import { Countdown } from '../components/Countdown';
+import { LoadingScreen } from '../components/LoadingScreen';
 import { ResultsScreen } from './ResultsScreen';
 import { formatTime } from '../../core/storage';
 import type { RaceScene } from '../../game/scenes/RaceScene';
@@ -17,7 +18,7 @@ interface RaceScreenProps {
   onBack: () => void;
 }
 
-type ScreenState = 'countdown' | 'racing' | 'finished';
+type ScreenState = 'loading' | 'countdown' | 'racing' | 'finished';
 
 export function RaceScreen({ onBack }: RaceScreenProps) {
   const [isPaused, setIsPaused] = useState(false);
@@ -32,10 +33,11 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
   const [raceTime, setRaceTime] = useState(0);
   const [currentLapTime, setCurrentLapTime] = useState(0);
   const [lapTimes, setLapTimes] = useState<number[]>([]);
-  const [screenState, setScreenState] = useState<ScreenState>('countdown');
+  const [screenState, setScreenState] = useState<ScreenState>('loading');
   const [raceResult, setRaceResult] = useState<RaceResult | null>(null);
   const [trackName, setTrackName] = useState('');
   const [playerPosition, setPlayerPosition] = useState(1);
+  const [loadingProgress, setLoadingProgress] = useState(0);
   
   const inputRef = useRef<InputState>({
     accelerating: false,
@@ -85,7 +87,13 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
   }, []);
 
   const handleReady = useCallback(() => {
+    console.log('Scene ready, transitioning to countdown');
     setIsReady(true);
+    setScreenState('countdown');
+  }, []);
+
+  const handleProgress = useCallback((progress: number) => {
+    setLoadingProgress(progress);
   }, []);
 
   // Manejar evento de carrera terminada
@@ -192,12 +200,18 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
 
   const speedPercent = Math.min(100, (speed / maxSpeed) * 100);
 
+  // Pantalla de carga
+  if (screenState === 'loading') {
+    return <LoadingScreen progress={loadingProgress} />;
+  }
+
   return (
     <div className="fixed inset-0 bg-black overflow-hidden select-none" style={{ touchAction: 'none' }}>
       {/* Canvas de Phaser */}
       <GameCanvas
         onStateUpdate={handleStateUpdate}
         onReady={handleReady}
+        onProgress={handleProgress}
         inputRef={inputRef}
         sceneRef={sceneRef}
       />

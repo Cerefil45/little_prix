@@ -30,11 +30,12 @@ interface GameCanvasProps {
     playerPosition: number;
   }) => void;
   onReady?: () => void;
+  onProgress?: (progress: number) => void;
   inputRef: React.MutableRefObject<InputState>;
   sceneRef: React.MutableRefObject<RaceScene | null>;
 }
 
-export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameCanvasProps) {
+export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, sceneRef }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const animFrameRef = useRef<number>(0);
@@ -56,10 +57,15 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
   useEffect(() => {
     if (!containerRef.current) return;
 
+    // Iniciar progreso de carga
+    onProgress?.(10);
+
     // Crear el juego
     const config = createGameConfig(containerRef.current);
     const game = new Phaser.Game(config);
     gameRef.current = game;
+
+    onProgress?.(30);
 
     // Función para configurar la escena una vez que esté lista
     const setupScene = () => {
@@ -67,10 +73,12 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
       if (!scene) {
         // Si la escena aún no está disponible, intentar de nuevo en el próximo frame
         console.log('Scene not ready yet, retrying...');
+        onProgress?.(40);
         requestAnimationFrame(setupScene);
         return;
       }
       
+      onProgress?.(70);
       console.log('Scene ready, setting sceneRef');
       sceneRef.current = scene;
 
@@ -82,6 +90,7 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
         scene.onSceneEvent('ready', onReady as SceneEventCallback);
         // Llamar directamente a onReady ya que la escena ya está creada
         console.log('Calling onReady callback directly');
+        onProgress?.(100);
         onReady();
       }
 
@@ -90,6 +99,7 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
     };
 
     // Intentar configurar la escena después de un breve delay para asegurar que Phaser se inicialice
+    onProgress?.(50);
     setTimeout(setupScene, 100);
 
     return () => {
