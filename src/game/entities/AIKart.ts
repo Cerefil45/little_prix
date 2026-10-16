@@ -21,6 +21,11 @@ export class AIKart extends Kart {
   public name: string;
   public finished: boolean = false;
   public finishTime: number = 0;
+  
+  // Sistema de checkpoints para IA
+  public currentLap: number = 1;
+  public lastCheckpoint: number = -1;
+  public checkpoints: Array<{ x: number; y: number; radius: number }> = [];
 
   private waypoints: Waypoint[];
   private bodyColor: number;
@@ -96,6 +101,9 @@ export class AIKart extends Kart {
     // Actualizar índice de waypoint
     updateWaypointIndex(this.aiState, this.getPosition(), this.waypoints);
 
+    // Verificar checkpoints
+    this.checkCheckpoints();
+
     // Calcular input de IA
     const input = calculateAIInput(
       this.aiState,
@@ -111,17 +119,43 @@ export class AIKart extends Kart {
   }
 
   /**
+   * Verifica si el kart de IA ha cruzado algún checkpoint.
+   */
+  checkCheckpoints(): void {
+    if (this.checkpoints.length === 0) return;
+
+    const kartPos = this.getPosition();
+    const nextCheckpoint = (this.lastCheckpoint + 1) % this.checkpoints.length;
+    const checkpoint = this.checkpoints[nextCheckpoint];
+
+    // Calcular distancia al siguiente checkpoint
+    const dx = kartPos.x - checkpoint.x;
+    const dy = kartPos.y - checkpoint.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+
+    // Si está dentro del radio del checkpoint
+    if (distance < checkpoint.radius) {
+      this.lastCheckpoint = nextCheckpoint;
+
+      // Si completó todos los checkpoints, completar vuelta
+      if (nextCheckpoint === 0 && this.lastCheckpoint === this.checkpoints.length - 1) {
+        this.currentLap++;
+      }
+    }
+  }
+
+  /**
+   * Obtiene el progreso total del kart (vueltas + checkpoints).
+   */
+  getProgress(): number {
+    return this.lastCheckpoint + (this.currentLap - 1) * this.checkpoints.length;
+  }
+
+  /**
    * Marca al kart como terminado.
    */
   markFinished(time: number): void {
     this.finished = true;
     this.finishTime = time;
-  }
-
-  /**
-   * Obtiene el progreso de la carrera (para calcular posiciones).
-   */
-  getProgress(): number {
-    return this.aiState.currentWaypointIndex;
   }
 }

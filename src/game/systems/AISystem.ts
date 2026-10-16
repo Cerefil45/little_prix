@@ -52,8 +52,9 @@ export function calculateAIInput(
     drifting: false,
   };
 
-  // Determinar waypoint objetivo
-  const targetIndex = (aiState.currentWaypointIndex + config.lookAheadDistance) % waypoints.length;
+  // Determinar waypoint objetivo - mirar más adelante para mejor navegación
+  const lookAhead = Math.max(2, config.lookAheadDistance);
+  const targetIndex = (aiState.currentWaypointIndex + lookAhead) % waypoints.length;
   const target = waypoints[targetIndex];
 
   // Calcular ángulo hacia el objetivo
@@ -68,29 +69,40 @@ export function calculateAIInput(
   while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
   while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
 
-  // Decidir dirección de giro
-  const turnThreshold = 0.1; // Radianes
+  // Decidir dirección de giro - umbral más bajo para giros más precisos
+  const turnThreshold = 0.05; // Radianes
   if (angleDiff > turnThreshold) {
     input.steerRight = true;
   } else if (angleDiff < -turnThreshold) {
     input.steerLeft = true;
   }
 
-  // Decelerar en curvas cerradas
-  const isSharpTurn = Math.abs(angleDiff) > 0.5;
+  // Decelerar en curvas cerradas - mejor manejo de curvas
+  const absAngleDiff = Math.abs(angleDiff);
+  const isSharpTurn = absAngleDiff > 0.4;
+  const isMediumTurn = absAngleDiff > 0.2;
   const targetMaxSpeed = config.maxSpeedMultiplier * 320; // PHYSICS.MAX_SPEED
   
-  if (isSharpTurn && speed > targetMaxSpeed * 0.6) {
-    // Curva cerrada: frenar un poco
-    input.accelerating = false;
-    input.braking = speed > targetMaxSpeed * 0.7;
+  if (isSharpTurn) {
+    // Curva cerrada: frenar significativamente
+    if (speed > targetMaxSpeed * 0.5) {
+      input.accelerating = false;
+      input.braking = speed > targetMaxSpeed * 0.6;
+    } else {
+      input.accelerating = true;
+    }
+  } else if (isMediumTurn) {
+    // Curva media: mantener velocidad moderada
+    input.accelerating = speed < targetMaxSpeed * 0.8;
+    input.braking = false;
   } else {
-    // Recta o curva suave: acelerar
+    // Recta o curva suave: acelerar al máximo
     input.accelerating = speed < targetMaxSpeed;
+    input.braking = false;
   }
 
-  // Derrapar en curvas muy cerradas a alta velocidad (solo IAs expertas)
-  if (config.skillLevel > 0.8 && isSharpTurn && speed > targetMaxSpeed * 0.7) {
+  // Derrapar en curvas cerradas a alta velocidad (solo IAs expertas)
+  if (config.skillLevel > 0.7 && isSharpTurn && speed > targetMaxSpeed * 0.6) {
     input.drifting = true;
   }
 
@@ -103,8 +115,15 @@ export function calculateAIInput(
     if (aiState.stuckTimer > 60) { // 1 segundo a 60fps
       // Está atascado, intentar maniobra de escape
       input.accelerating = true;
-      input.steerLeft = !input.steerLeft;
-      input.steerRight = !input.steerRight;
+      input.braking = false;
+      // Alternar dirección de giro para desatascar
+      if (Math.random() > 0.5) {
+        input.steerLeft = true;
+        input.steerRight = false;
+      } else {
+        input.steerRight = true;
+        input.steerLeft = false;
+      }
       aiState.stuckTimer = 0;
     }
   } else {

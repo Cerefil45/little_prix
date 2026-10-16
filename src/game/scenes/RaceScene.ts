@@ -284,19 +284,19 @@ export class RaceScene extends Phaser.Scene {
       {
         name: 'Rojo Rápido',
         color: 0xff6b6b,
-        config: { skillLevel: 0.85, maxSpeedMultiplier: 0.95, lookAheadDistance: 3 },
+        config: { skillLevel: 0.9, maxSpeedMultiplier: 0.92, lookAheadDistance: 4 },
         offset: 1
       },
       {
         name: 'Azul Veloz',
         color: 0x4ecdc4,
-        config: { skillLevel: 0.75, maxSpeedMultiplier: 0.88, lookAheadDistance: 2 },
+        config: { skillLevel: 0.85, maxSpeedMultiplier: 0.88, lookAheadDistance: 3 },
         offset: 2
       },
       {
         name: 'Verde Ágil',
         color: 0x95e1d3,
-        config: { skillLevel: 0.65, maxSpeedMultiplier: 0.82, lookAheadDistance: 2 },
+        config: { skillLevel: 0.8, maxSpeedMultiplier: 0.85, lookAheadDistance: 3 },
         offset: 3
       }
     ];
@@ -330,6 +330,9 @@ export class RaceScene extends Phaser.Scene {
         ai.color
       );
       
+      // Asignar checkpoints al AIKart
+      aiKart.checkpoints = [...this.checkpoints];
+      
       // Iniciar en waypoint correspondiente
       aiKart.aiState.currentWaypointIndex = ai.offset;
       
@@ -357,7 +360,7 @@ export class RaceScene extends Phaser.Scene {
       this.lastCheckpoint = nextCheckpoint;
 
       // Si completó todos los checkpoints, completar vuelta
-      if (nextCheckpoint === 0 && this.lastCheckpoint === this.checkpoints.length - 1) {
+      if (nextCheckpoint === 0 && this.checkpoints.length > 1) {
         this.completeLap();
       }
 
@@ -646,9 +649,8 @@ export class RaceScene extends Phaser.Scene {
       ...this.aiKarts.map(ai => ({
         name: ai.name,
         isPlayer: false,
-        lap: ai.aiState.currentWaypointIndex < this.checkpoints.length ? 1 : 
-              ai.aiState.currentWaypointIndex < this.checkpoints.length * 2 ? 2 : 3,
-        progress: ai.aiState.currentWaypointIndex
+        lap: ai.currentLap,
+        progress: ai.getProgress()
       }))
     ];
 
