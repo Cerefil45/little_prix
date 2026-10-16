@@ -200,14 +200,9 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
 
   const speedPercent = Math.min(100, (speed / maxSpeed) * 100);
 
-  // Pantalla de carga
-  if (screenState === 'loading') {
-    return <LoadingScreen progress={loadingProgress} />;
-  }
-
   return (
     <div className="fixed inset-0 bg-black overflow-hidden select-none" style={{ touchAction: 'none' }}>
-      {/* Canvas de Phaser */}
+      {/* Canvas de Phaser - SIEMPRE montado */}
       <GameCanvas
         onStateUpdate={handleStateUpdate}
         onReady={handleReady}
@@ -215,6 +210,11 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
         inputRef={inputRef}
         sceneRef={sceneRef}
       />
+
+      {/* Pantalla de carga - Overlay sobre el canvas */}
+      {screenState === 'loading' && (
+        <LoadingScreen progress={loadingProgress} />
+      )}
 
       {/* Countdown overlay */}
       {isReady && screenState === 'countdown' && (
