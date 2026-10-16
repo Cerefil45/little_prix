@@ -61,12 +61,17 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
     const game = new Phaser.Game(config);
     gameRef.current = game;
 
-    // Esperar a que la escena esté creada
-    // Usamos scene.events 'create' que se dispara cuando la escena termina su método create()
+    // Función para configurar la escena una vez que esté lista
     const setupScene = () => {
       const scene = game.scene.getScene('RaceScene') as RaceScene;
-      if (!scene) return;
+      if (!scene) {
+        // Si la escena aún no está disponible, intentar de nuevo en el próximo frame
+        console.log('Scene not ready yet, retrying...');
+        requestAnimationFrame(setupScene);
+        return;
+      }
       
+      console.log('Scene ready, setting sceneRef');
       sceneRef.current = scene;
 
       // Registrar callbacks
@@ -75,19 +80,17 @@ export function GameCanvas({ onStateUpdate, onReady, inputRef, sceneRef }: GameC
       }
       if (onReady) {
         scene.onSceneEvent('ready', onReady as SceneEventCallback);
+        // Llamar directamente a onReady ya que la escena ya está creada
+        console.log('Calling onReady callback directly');
+        onReady();
       }
 
       // Iniciar sync de input
       animFrameRef.current = requestAnimationFrame(syncInput);
     };
 
-    // Escuchar el evento 'create' de la escena
-    game.events.on('ready', () => {
-      const scene = game.scene.getScene('RaceScene') as RaceScene;
-      if (scene) {
-        scene.events.once('create', setupScene);
-      }
-    });
+    // Intentar configurar la escena después de un breve delay para asegurar que Phaser se inicialice
+    setTimeout(setupScene, 100);
 
     return () => {
       // Limpiar

@@ -123,8 +123,12 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
 
   // Countdown completado → iniciar carrera
   const handleCountdownComplete = useCallback(() => {
+    console.log('Countdown complete, sceneRef:', sceneRef.current);
     if (sceneRef.current) {
+      console.log('Calling startRace()');
       sceneRef.current.startRace();
+    } else {
+      console.error('sceneRef.current is null!');
     }
     setScreenState('racing');
   }, []);

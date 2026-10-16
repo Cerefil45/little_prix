@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface CountdownProps {
   onComplete: () => void;
@@ -6,12 +6,18 @@ interface CountdownProps {
 
 export function Countdown({ onComplete }: CountdownProps) {
   const [count, setCount] = useState(3);
+  const onCompleteRef = useRef(onComplete);
+  
+  // Mantener la referencia actualizada sin causar re-renders
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (count === 0) {
       // Mostrar "GO!" por 1 segundo antes de completar
       const timeout = setTimeout(() => {
-        onComplete();
+        onCompleteRef.current();
       }, 1000);
       return () => clearTimeout(timeout);
     }
@@ -21,7 +27,7 @@ export function Countdown({ onComplete }: CountdownProps) {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [count, onComplete]);
+  }, [count]);
 
   return (
     <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-50">

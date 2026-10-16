@@ -532,6 +532,11 @@ export class RaceScene extends Phaser.Scene {
 
     const dt = delta / 1000;
 
+    // Log temporal para debug
+    if (Math.random() < 0.01) { // Log solo el 1% de las veces para no saturar
+      console.log('RaceScene update - raceStarted:', this.raceStarted, 'speed:', this.kart.physics.speed);
+    }
+
     // Actualizar cronómetro (solo si la carrera ha empezado)
     if (this.raceStarted) {
       this.raceTime += delta;
@@ -738,6 +743,7 @@ export class RaceScene extends Phaser.Scene {
    * Inicia la carrera (llamado después del countdown).
    */
   startRace(): void {
+    console.log('startRace() called, setting raceStarted to true');
     this.raceStarted = true;
     this.emitSceneEvent('raceStarted');
   }
