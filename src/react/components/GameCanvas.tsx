@@ -28,6 +28,8 @@ interface GameCanvasProps {
     raceFinished: boolean;
     positions: Array<{ name: string; isPlayer: boolean; lap: number; progress: number }>;
     playerPosition: number;
+    coinCount: number;
+    playerItem: string | null;
   }) => void;
   onReady?: () => void;
   onProgress?: (progress: number) => void;

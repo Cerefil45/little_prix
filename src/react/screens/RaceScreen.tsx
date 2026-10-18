@@ -38,6 +38,8 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
   const [trackName, setTrackName] = useState('');
   const [playerPosition, setPlayerPosition] = useState(1);
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [coinCount, setCoinCount] = useState(0);
+  const [playerItem, setPlayerItem] = useState<string | null>(null);
   
   const inputRef = useRef<InputState>({
     accelerating: false,
@@ -69,6 +71,8 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     raceFinished: boolean;
     positions: Array<{ name: string; isPlayer: boolean; lap: number; progress: number }>;
     playerPosition: number;
+    coinCount: number;
+    playerItem: string | null;
   }) => {
     const now = performance.now();
     if (now - lastUpdateRef.current < 100) return;
@@ -84,6 +88,8 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
     setCurrentLapTime(state.currentLapTime);
     setLapTimes(state.lapTimes);
     setPlayerPosition(state.playerPosition);
+    setCoinCount(state.coinCount);
+    setPlayerItem(state.playerItem);
   }, []);
 
   const handleReady = useCallback(() => {
@@ -242,6 +248,33 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
               </div>
             </div>
 
+            {/* Monedas e Item */}
+            <div className="flex flex-col gap-2 items-start">
+              {/* Contador de monedas */}
+              <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">🪙</span>
+                  <span className="text-xl font-bold text-yellow-400 font-mono">{coinCount}</span>
+                </div>
+              </div>
+
+              {/* Item actual */}
+              {playerItem && (
+                <div className="bg-black/60 backdrop-blur-sm rounded-lg px-3 py-2 pointer-events-auto">
+                  <div className="text-xs text-gray-400 mb-1">ITEM</div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">
+                      {playerItem === 'turbo' ? '🚀' : playerItem === 'caparazon' ? '🐢' : '🍌'}
+                    </span>
+                    <span className="text-sm font-bold text-white">
+                      {playerItem === 'turbo' ? 'TURBO' : playerItem === 'caparazon' ? 'CAPARAZÓN' : 'PLÁTANO'}
+                    </span>
+                  </div>
+                  <div className="text-xs text-gray-500 mt-1">Presiona E o Q</div>
+                </div>
+              )}
+            </div>
+
             {/* Cronómetro y Vueltas */}
             <div className="flex flex-col gap-2 items-end">
               {/* Cronómetro */}
@@ -336,7 +369,16 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
 
       {/* Controles táctiles (solo durante la carrera) */}
       {screenState === 'racing' && (
-        <TouchControls inputRef={inputRef} disabled={isPaused} />
+        <TouchControls 
+          inputRef={inputRef} 
+          disabled={isPaused}
+          hasItem={!!playerItem}
+          onUseItem={() => {
+            if (sceneRef.current && playerItem) {
+              sceneRef.current.usePlayerItem();
+            }
+          }}
+        />
       )}
 
       {/* Menú de pausa */}

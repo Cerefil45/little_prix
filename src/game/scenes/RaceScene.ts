@@ -6,6 +6,9 @@
 import Phaser from 'phaser';
 import { Kart } from '../entities/Kart';
 import { AIKart } from '../entities/AIKart';
+import { Coin } from '../entities/Coin';
+import { ItemBox, type ItemType } from '../entities/ItemBox';
+import { ItemSystem } from '../systems/ItemSystem';
 import { CircuitOne, getTrackBoundaries, type TrackData } from '../tracks/CircuitOne';
 import type { InputState } from '../systems/MovementSystem';
 import { detectClosestCollision, type Segment } from '../systems/CollisionUtils';
@@ -48,6 +51,17 @@ export class RaceScene extends Phaser.Scene {
   // Rivales IA
   private aiKarts: AIKart[] = [];
   private positions: Array<{ name: string; isPlayer: boolean; lap: number; progress: number }> = [];
+  
+  // Monedas
+  private coins: Coin[] = [];
+  private coinCount: number = 0;
+  
+  // Cajas de items
+  private itemBoxes: ItemBox[] = [];
+  
+  // Sistema de items
+  private itemSystem: ItemSystem | null = null;
+  private playerItem: ItemType | null = null;
 
   constructor() {
     super({ key: 'RaceScene' });
@@ -116,6 +130,19 @@ export class RaceScene extends Phaser.Scene {
       // Inicializar checkpoints para sistema de vueltas
       this.setupCheckpoints();
       console.log('RaceScene: Checkpoints setup');
+
+      // Crear monedas
+      this.createCoins();
+      console.log('RaceScene: Coins created');
+
+      // Crear cajas de items
+      this.createItemBoxes();
+      console.log('RaceScene: Item boxes created');
+
+      // Inicializar sistema de items
+      this.itemSystem = new ItemSystem(this);
+      this.itemSystem.registerKarts([this.kart, ...this.aiKarts]);
+      console.log('RaceScene: Item system initialized');
 
       // Input de teclado
       this.setupKeyboardInput();
@@ -271,6 +298,52 @@ export class RaceScene extends Phaser.Scene {
         y: wp.y,
         radius: wp.width * 0.6 // Radio del checkpoint (60% del ancho de pista)
       });
+    }
+  }
+
+  /**
+   * Crea las monedas en el circuito.
+   */
+  private createCoins(): void {
+    this.coins = [];
+    this.coinCount = 0;
+
+    // Posiciones de monedas a lo largo del circuito
+    const coinPositions = [
+      { x: 900, y: 200 },
+      { x: 1100, y: 300 },
+      { x: 1200, y: 500 },
+      { x: 1100, y: 700 },
+      { x: 900, y: 800 },
+      { x: 700, y: 800 },
+      { x: 500, y: 700 },
+      { x: 400, y: 500 },
+      { x: 500, y: 300 },
+      { x: 700, y: 200 },
+    ];
+
+    for (const pos of coinPositions) {
+      const coin = new Coin(this, pos.x, pos.y);
+      this.coins.push(coin);
+    }
+  }
+
+  /**
+   * Crea las cajas de items en el circuito.
+   */
+  private createItemBoxes(): void {
+    this.itemBoxes = [];
+
+    // Posiciones de cajas de items
+    const itemBoxPositions = [
+      { x: 1000, y: 250 },
+      { x: 1150, y: 600 },
+      { x: 600, y: 750 },
+    ];
+
+    for (const pos of itemBoxPositions) {
+      const itemBox = new ItemBox(this, pos.x, pos.y);
+      this.itemBoxes.push(itemBox);
     }
   }
 
@@ -557,7 +630,7 @@ export class RaceScene extends Phaser.Scene {
    * Configura el input de teclado.
    */
   private setupKeyboardInput(): void {
-    const keys = ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'SPACE', 'SHIFT'];
+    const keys = ['W', 'A', 'S', 'D', 'UP', 'DOWN', 'LEFT', 'RIGHT', 'SPACE', 'SHIFT', 'E', 'Q'];
     for (const key of keys) {
       const k = this.input.keyboard!.addKey(key);
       k.on('down', () => { this.keyboardInput[key] = true; });
@@ -596,6 +669,13 @@ export class RaceScene extends Phaser.Scene {
       drifting: false,
     };
 
+    // Usar item con tecla E o Q
+    if (this.raceStarted && this.playerItem && (this.keyboardInput['E'] || this.keyboardInput['Q'])) {
+      this.usePlayerItem();
+      this.keyboardInput['E'] = false;
+      this.keyboardInput['Q'] = false;
+    }
+
     // Actualizar kart del jugador
     this.kart.update(dt, effectiveInput);
 
@@ -612,6 +692,60 @@ export class RaceScene extends Phaser.Scene {
 
       // Colisiones kart-kart
       this.checkKartCollisions();
+    }
+
+    // Actualizar monedas
+    this.coins.forEach(coin => {
+      coin.update(delta);
+      
+      // Detectar colisión con el kart del jugador
+      if (!coin.collected) {
+        const kartPos = this.kart.getPosition();
+        const coinPos = coin.position;
+        const dx = kartPos.x - coinPos.x;
+        const dy = kartPos.y - coinPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 30) {
+          coin.collect();
+          this.coinCount++;
+          
+          // Boost de velocidad al recoger moneda
+          this.kart.physics.speed = Math.min(
+            this.kart.physics.maxSpeed,
+            this.kart.physics.speed + 50
+          );
+          
+          this.emitSceneEvent('coinCollected', { count: this.coinCount });
+        }
+      }
+    });
+
+    // Actualizar cajas de items
+    this.itemBoxes.forEach(itemBox => {
+      itemBox.update(delta);
+      
+      // Detectar colisión con el kart del jugador
+      if (itemBox.available && !this.playerItem) {
+        const kartPos = this.kart.getPosition();
+        const boxPos = itemBox.position;
+        const dx = kartPos.x - boxPos.x;
+        const dy = kartPos.y - boxPos.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < 35) {
+          const item = itemBox.collect();
+          if (item) {
+            this.playerItem = item;
+            this.emitSceneEvent('itemCollected', { item });
+          }
+        }
+      }
+    });
+
+    // Actualizar sistema de items
+    if (this.itemSystem) {
+      this.itemSystem.update();
     }
 
     // Detección manual de colisiones con bordes (jugador)
@@ -647,7 +781,9 @@ export class RaceScene extends Phaser.Scene {
       raceStarted: this.raceStarted,
       raceFinished: this.raceFinished,
       positions: this.positions,
-      playerPosition: this.getPlayerPosition()
+      playerPosition: this.getPlayerPosition(),
+      coinCount: this.coinCount,
+      playerItem: this.playerItem
     });
   }
 
@@ -707,6 +843,17 @@ export class RaceScene extends Phaser.Scene {
   private getPlayerPosition(): number {
     const playerIndex = this.positions.findIndex(p => p.isPlayer);
     return playerIndex + 1;
+  }
+
+  /**
+   * Usa el item del jugador.
+   */
+  usePlayerItem(): void {
+    if (!this.playerItem || !this.itemSystem) return;
+
+    this.itemSystem.useItem(this.kart, this.playerItem);
+    this.emitSceneEvent('itemUsed', { item: this.playerItem });
+    this.playerItem = null;
   }
 
   /**

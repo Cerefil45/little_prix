@@ -9,9 +9,11 @@ import type { InputState } from '../../game/systems/MovementSystem';
 interface TouchControlsProps {
   inputRef: React.MutableRefObject<InputState>;
   disabled?: boolean;
+  hasItem?: boolean;
+  onUseItem?: () => void;
 }
 
-export function TouchControls({ inputRef, disabled = false }: TouchControlsProps) {
+export function TouchControls({ inputRef, disabled = false, hasItem = false, onUseItem }: TouchControlsProps) {
   const activeTouches = useRef<Map<number, string>>(new Map());
 
   // Limpiar todos los inputs
@@ -138,8 +140,27 @@ export function TouchControls({ inputRef, disabled = false }: TouchControlsProps
           </button>
         </div>
 
-        {/* Controles derechos: Acelerar + Drift */}
+        {/* Controles derechos: Acelerar + Drift + Item */}
         <div className="flex flex-col items-center gap-2 pointer-events-auto">
+          {/* Botón de usar item (solo visible si tiene item) */}
+          {hasItem && onUseItem && (
+            <button
+              className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-purple-500/40 border-2 border-purple-400/60
+                flex items-center justify-center text-white text-2xl
+                active:bg-purple-500/60 transition-colors select-none animate-pulse"
+              onTouchStart={(e) => {
+                e.preventDefault();
+                onUseItem();
+              }}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onUseItem();
+              }}
+              aria-label="Usar item"
+            >
+              ⚡
+            </button>
+          )}
           <button
             className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-orange-500/30 border-2 border-orange-400/50
               flex items-center justify-center text-white text-xs font-bold
