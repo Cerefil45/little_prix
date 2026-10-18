@@ -14,11 +14,14 @@ export interface AIState {
   lastPosition: { x: number; y: number };
 }
 
+export type AIPersonality = 'aggressive' | 'technical' | 'beginner';
+
 export interface AIConfig {
   skillLevel: number;
   maxSpeedMultiplier: number; // 0.8-1.0, qué tan rápido va respecto al máximo
   lookAheadDistance: number; // cuántos waypoints adelante mira
   rubberBandStrength?: number; // 0.0-0.2, fuerza del rubber banding
+  personality?: AIPersonality; // tipo de personalidad de la IA
 }
 
 /**
@@ -99,27 +102,55 @@ export function calculateAIInput(
   
   const targetMaxSpeed = config.maxSpeedMultiplier * 320 * rubberBandBoost; // PHYSICS.MAX_SPEED
   
-  if (isSharpTurn) {
-    // Curva cerrada: frenar significativamente
-    if (speed > targetMaxSpeed * 0.5) {
-      input.accelerating = false;
-      input.braking = speed > targetMaxSpeed * 0.6;
+  // Comportamiento según personalidad
+  const personality = config.personality || 'technical';
+  
+  if (personality === 'aggressive') {
+    // IA agresiva: frena menos, toma más riesgos
+    if (isSharpTurn) {
+      input.accelerating = speed < targetMaxSpeed * 0.7;
+      input.braking = speed > targetMaxSpeed * 0.85;
+    } else if (isMediumTurn) {
+      input.accelerating = speed < targetMaxSpeed * 0.95;
+      input.braking = false;
     } else {
-      input.accelerating = true;
+      input.accelerating = speed < targetMaxSpeed;
+      input.braking = false;
     }
-  } else if (isMediumTurn) {
-    // Curva media: mantener velocidad moderada
-    input.accelerating = speed < targetMaxSpeed * 0.8;
-    input.braking = false;
+    // Más propenso a drift
+    input.drifting = isSharpTurn && speed > targetMaxSpeed * 0.6;
+  } else if (personality === 'beginner') {
+    // IA principiante: frena más, es más cautelosa
+    if (isSharpTurn) {
+      input.accelerating = speed < targetMaxSpeed * 0.4;
+      input.braking = speed > targetMaxSpeed * 0.5;
+    } else if (isMediumTurn) {
+      input.accelerating = speed < targetMaxSpeed * 0.65;
+      input.braking = speed > targetMaxSpeed * 0.7;
+    } else {
+      input.accelerating = speed < targetMaxSpeed * 0.85;
+      input.braking = false;
+    }
+    // Menos propenso a drift
+    input.drifting = false;
   } else {
-    // Recta o curva suave: acelerar al máximo
-    input.accelerating = speed < targetMaxSpeed;
-    input.braking = false;
-  }
-
-  // Derrapar en curvas cerradas a alta velocidad (solo IAs expertas)
-  if (config.skillLevel > 0.7 && isSharpTurn && speed > targetMaxSpeed * 0.6) {
-    input.drifting = true;
+    // IA técnica: comportamiento balanceado (el original)
+    if (isSharpTurn) {
+      if (speed > targetMaxSpeed * 0.5) {
+        input.accelerating = false;
+        input.braking = speed > targetMaxSpeed * 0.6;
+      } else {
+        input.accelerating = true;
+      }
+    } else if (isMediumTurn) {
+      input.accelerating = speed < targetMaxSpeed * 0.8;
+      input.braking = false;
+    } else {
+      input.accelerating = speed < targetMaxSpeed;
+      input.braking = false;
+    }
+    // Drift inteligente
+    input.drifting = isSharpTurn && speed > targetMaxSpeed * 0.65 && config.skillLevel > 0.7;
   }
 
   // Detectar si está atascado

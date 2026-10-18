@@ -10,6 +10,8 @@ import { Coin } from '../entities/Coin';
 import { ItemBox, type ItemType } from '../entities/ItemBox';
 import { ItemSystem } from '../systems/ItemSystem';
 import { CircuitOne, getTrackBoundaries, type TrackData } from '../tracks/CircuitOne';
+import { CircuitTwo } from '../tracks/CircuitTwo';
+import { CircuitThree } from '../tracks/CircuitThree';
 import type { InputState } from '../systems/MovementSystem';
 import { detectClosestCollision, type Segment } from '../systems/CollisionUtils';
 import type { AIConfig } from '../systems/AISystem';
@@ -76,6 +78,20 @@ export class RaceScene extends Phaser.Scene {
   setVehicleId(vehicleId: string): void {
     this.vehicleId = vehicleId;
     console.log('RaceScene: Vehicle set to', vehicleId);
+  }
+
+  /**
+   * Establece el circuito seleccionado.
+   */
+  setTrackId(trackId: string): void {
+    if (trackId === 'circuit2') {
+      this.track = CircuitTwo;
+    } else if (trackId === 'circuit3') {
+      this.track = CircuitThree;
+    } else {
+      this.track = CircuitOne;
+    }
+    console.log('RaceScene: Track set to', this.track.name);
   }
 
   /**
@@ -159,9 +175,20 @@ export class RaceScene extends Phaser.Scene {
   /**
    * Inicializa la escena con datos del circuito.
    */
-  init(data: { track?: TrackData }): void {
+  init(data: { track?: TrackData; trackId?: string }): void {
     console.log('RaceScene: init() called');
-    this.track = data.track || CircuitOne;
+    
+    // Seleccionar circuito basado en trackId
+    if (data.track) {
+      this.track = data.track;
+    } else if (data.trackId === 'circuit2') {
+      this.track = CircuitTwo;
+    } else if (data.trackId === 'circuit3') {
+      this.track = CircuitThree;
+    } else {
+      this.track = CircuitOne;
+    }
+    
     console.log('RaceScene: Track initialized:', this.track.name);
   }
 
@@ -428,21 +455,39 @@ export class RaceScene extends Phaser.Scene {
     
     const aiConfigs: Array<{ name: string; color: number; config: AIConfig; offset: number }> = [
       {
-        name: 'Rojo Rápido',
+        name: 'Rojo Agresivo',
         color: 0xff6b6b,
-        config: { skillLevel: 0.9, maxSpeedMultiplier: 0.92, lookAheadDistance: 4, rubberBandStrength: 0.10 },
+        config: { 
+          skillLevel: 0.9, 
+          maxSpeedMultiplier: 0.92, 
+          lookAheadDistance: 4, 
+          rubberBandStrength: 0.10,
+          personality: 'aggressive'
+        },
         offset: 1
       },
       {
-        name: 'Azul Veloz',
+        name: 'Azul Técnico',
         color: 0x4ecdc4,
-        config: { skillLevel: 0.85, maxSpeedMultiplier: 0.88, lookAheadDistance: 3, rubberBandStrength: 0.12 },
+        config: { 
+          skillLevel: 0.85, 
+          maxSpeedMultiplier: 0.88, 
+          lookAheadDistance: 3, 
+          rubberBandStrength: 0.12,
+          personality: 'technical'
+        },
         offset: 2
       },
       {
-        name: 'Verde Ágil',
+        name: 'Verde Principiante',
         color: 0x95e1d3,
-        config: { skillLevel: 0.8, maxSpeedMultiplier: 0.85, lookAheadDistance: 3, rubberBandStrength: 0.15 },
+        config: { 
+          skillLevel: 0.75, 
+          maxSpeedMultiplier: 0.82, 
+          lookAheadDistance: 3, 
+          rubberBandStrength: 0.15,
+          personality: 'beginner'
+        },
         offset: 3
       }
     ];

@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense } from 'react';
 import { StartScreen } from './react/screens/StartScreen';
 import { VehicleSelect, vehicles } from './react/screens/VehicleSelect';
+import { TrackSelect } from './react/screens/TrackSelect';
 
 const RaceScreen = lazy(() =>
   import('./react/screens/RaceScreen').then(m => ({ default: m.RaceScreen }))
@@ -28,8 +29,9 @@ const sections = [
 export default function App() {
   const [activeSection, setActiveSection] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [screen, setScreen] = useState<'docs' | 'start' | 'vehicle-select' | 'race' | 'roadmap'>('docs');
+  const [screen, setScreen] = useState<'docs' | 'start' | 'vehicle-select' | 'track-select' | 'race' | 'roadmap'>('docs');
   const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicles[0].id);
+  const [selectedTrackId, setSelectedTrackId] = useState<string>('circuit1');
 
   // Si estamos en la pantalla de selección de vehículo
   if (screen === 'vehicle-select') {
@@ -38,6 +40,19 @@ export default function App() {
         onBack={() => setScreen('start')}
         onSelect={(vehicleId) => {
           setSelectedVehicleId(vehicleId);
+          setScreen('track-select');
+        }}
+      />
+    );
+  }
+
+  // Si estamos en la pantalla de selección de circuito
+  if (screen === 'track-select') {
+    return (
+      <TrackSelect
+        onBack={() => setScreen('vehicle-select')}
+        onSelect={(trackId) => {
+          setSelectedTrackId(trackId);
           setScreen('race');
         }}
       />
@@ -52,7 +67,7 @@ export default function App() {
           <div className="text-white text-xl">Cargando circuito...</div>
         </div>
       }>
-        <RaceScreen onBack={() => setScreen('start')} vehicleId={selectedVehicleId} />
+        <RaceScreen onBack={() => setScreen('start')} vehicleId={selectedVehicleId} trackId={selectedTrackId} />
       </Suspense>
     );
   }

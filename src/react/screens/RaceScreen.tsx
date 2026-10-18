@@ -17,11 +17,12 @@ import type { RaceResult } from '../../core/types';
 interface RaceScreenProps {
   onBack: () => void;
   vehicleId?: string;
+  trackId?: string;
 }
 
 type ScreenState = 'loading' | 'countdown' | 'racing' | 'finished';
 
-export function RaceScreen({ onBack, vehicleId = 'balanced' }: RaceScreenProps) {
+export function RaceScreen({ onBack, vehicleId = 'balanced', trackId = 'circuit1' }: RaceScreenProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [speed, setSpeed] = useState(0);
   const [maxSpeed] = useState(320);
@@ -222,6 +223,7 @@ export function RaceScreen({ onBack, vehicleId = 'balanced' }: RaceScreenProps) 
         inputRef={inputRef}
         sceneRef={sceneRef}
         vehicleId={vehicleId}
+        trackId={trackId}
       />
 
       {/* Pantalla de carga - Overlay sobre el canvas */}
@@ -271,10 +273,20 @@ export function RaceScreen({ onBack, vehicleId = 'balanced' }: RaceScreenProps) 
                   <div className="text-xs text-gray-400 mb-1">ITEM</div>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">
-                      {playerItem === 'turbo' ? '🚀' : playerItem === 'caparazon' ? '🐢' : '🍌'}
+                      {playerItem === 'turbo' ? '🚀' : 
+                       playerItem === 'caparazon' ? '🐢' : 
+                       playerItem === 'platano' ? '🍌' :
+                       playerItem === 'estrella' ? '⭐' :
+                       playerItem === 'rayo' ? '⚡' :
+                       playerItem === 'triple_caparazon' ? '🐢🐢🐢' : '❓'}
                     </span>
                     <span className="text-sm font-bold text-white">
-                      {playerItem === 'turbo' ? 'TURBO' : playerItem === 'caparazon' ? 'CAPARAZÓN' : 'PLÁTANO'}
+                      {playerItem === 'turbo' ? 'TURBO' : 
+                       playerItem === 'caparazon' ? 'CAPARAZÓN' : 
+                       playerItem === 'platano' ? 'PLÁTANO' :
+                       playerItem === 'estrella' ? 'ESTRELLA' :
+                       playerItem === 'rayo' ? 'RAYO' :
+                       playerItem === 'triple_caparazon' ? 'TRIPLE CAP.' : 'ITEM'}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">Presiona E o Q</div>

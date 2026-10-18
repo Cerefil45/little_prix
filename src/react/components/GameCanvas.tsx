@@ -36,9 +36,10 @@ interface GameCanvasProps {
   inputRef: React.MutableRefObject<InputState>;
   sceneRef: React.MutableRefObject<RaceScene | null>;
   vehicleId?: string;
+  trackId?: string;
 }
 
-export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, sceneRef, vehicleId = 'balanced' }: GameCanvasProps) {
+export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, sceneRef, vehicleId = 'balanced', trackId = 'circuit1' }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const animFrameRef = useRef<number>(0);
@@ -116,8 +117,9 @@ export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, scene
       onProgressRef.current?.(70);
       sceneRef.current = scene;
       
-      // Establecer el vehículo seleccionado
+      // Establecer el vehículo y circuito seleccionados
       scene.setVehicleId(vehicleId);
+      scene.setTrackId(trackId);
 
       // Registrar callbacks
       if (onStateUpdateRef.current) {

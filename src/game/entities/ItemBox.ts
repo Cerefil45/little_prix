@@ -5,7 +5,7 @@
 
 import Phaser from 'phaser';
 
-export type ItemType = 'turbo' | 'caparazon' | 'platano';
+export type ItemType = 'turbo' | 'caparazon' | 'platano' | 'estrella' | 'rayo' | 'triple_caparazon';
 
 export class ItemBox {
   public sprite: Phaser.GameObjects.Graphics;
@@ -101,36 +101,46 @@ export class ItemBox {
     if (playerPosition !== undefined && totalRacers !== undefined) {
       const positionRatio = playerPosition / totalRacers;
       
-      // Primer lugar (1-25%): más items defensivos
+      // Primer lugar (1-25%): más items defensivos + chance de estrella
       if (positionRatio <= 0.25) {
         weightedItems = [
-          { item: 'platano', weight: 50 },
-          { item: 'caparazon', weight: 40 },
+          { item: 'platano', weight: 45 },
+          { item: 'caparazon', weight: 35 },
           { item: 'turbo', weight: 10 },
+          { item: 'estrella', weight: 5 },
+          { item: 'triple_caparazon', weight: 5 },
         ];
       }
-      // Último lugar (75-100%): más items ofensivos
+      // Último lugar (75-100%): más items ofensivos + chance de rayo
       else if (positionRatio >= 0.75) {
         weightedItems = [
-          { item: 'turbo', weight: 60 },
-          { item: 'caparazon', weight: 30 },
+          { item: 'turbo', weight: 50 },
+          { item: 'caparazon', weight: 25 },
           { item: 'platano', weight: 10 },
+          { item: 'rayo', weight: 8 },
+          { item: 'triple_caparazon', weight: 7 },
         ];
       }
-      // Posición media (25-75%): balanceado
+      // Posición media (25-75%): balanceado con items raros
       else {
         weightedItems = [
-          { item: 'turbo', weight: 40 },
-          { item: 'caparazon', weight: 35 },
+          { item: 'turbo', weight: 35 },
+          { item: 'caparazon', weight: 30 },
           { item: 'platano', weight: 25 },
+          { item: 'estrella', weight: 4 },
+          { item: 'rayo', weight: 3 },
+          { item: 'triple_caparazon', weight: 3 },
         ];
       }
     } else {
-      // Fallback: distribución balanceada
+      // Fallback: distribución balanceada con items raros
       weightedItems = [
-        { item: 'turbo', weight: 40 },
-        { item: 'caparazon', weight: 35 },
+        { item: 'turbo', weight: 35 },
+        { item: 'caparazon', weight: 30 },
         { item: 'platano', weight: 25 },
+        { item: 'estrella', weight: 4 },
+        { item: 'rayo', weight: 3 },
+        { item: 'triple_caparazon', weight: 3 },
       ];
     }
 
