@@ -441,14 +441,17 @@ export class RaceScene extends Phaser.Scene {
       const expectedNext = (this.lastCheckpoint + 1) % this.checkpoints.length;
       
       if (closestCheckpointIndex === expectedNext) {
+        // Verificar si completó vuelta ANTES de actualizar lastCheckpoint
+        const completedLap = (closestCheckpointIndex === 0 && this.lastCheckpoint === this.checkpoints.length - 1);
+        
+        console.log(`[Jugador] Checkpoint ${closestCheckpointIndex} detectado. LastCheckpoint: ${this.lastCheckpoint}, ExpectedNext: ${expectedNext}, CompletedLap: ${completedLap}`);
+        
         this.lastCheckpoint = closestCheckpointIndex;
         
-        // Si acaba de tocar el checkpoint 0 después de haber pasado por todos los demás
-        if (closestCheckpointIndex === 0 && this.lastCheckpoint === 0) {
-          // Verificar que no sea el inicio de la carrera
-          if (this.raceStarted && this.currentLapTime > 0) {
-            this.completeLap();
-          }
+        // Si completó todos los checkpoints, completar vuelta
+        if (completedLap) {
+          console.log(`[Jugador] ¡Vuelta completada! Vuelta actual: ${this.currentLap}`);
+          this.completeLap();
         }
         
         this.emitSceneEvent('checkpoint', {
@@ -812,6 +815,8 @@ export class RaceScene extends Phaser.Scene {
     const playerCheckpoint = Math.max(0, this.lastCheckpoint);
     const playerProgress = (this.currentLap - 1) * this.checkpoints.length + playerCheckpoint;
     
+    console.log(`[DEBUG] Jugador: vuelta=${this.currentLap}, lastCheckpoint=${this.lastCheckpoint}, checkpoint=${playerCheckpoint}, progreso=${playerProgress}`);
+    
     // Crear array con todos los karts y su progreso
     const kartProgress = [
       {
@@ -825,6 +830,7 @@ export class RaceScene extends Phaser.Scene {
         // Usar el sistema de checkpoints de la IA para calcular el progreso
         const aiCheckpoint = Math.max(0, ai.lastCheckpoint);
         const aiProgress = (ai.currentLap - 1) * this.checkpoints.length + aiCheckpoint;
+        console.log(`[DEBUG] ${ai.name}: vuelta=${ai.currentLap}, lastCheckpoint=${ai.lastCheckpoint}, checkpoint=${aiCheckpoint}, progreso=${aiProgress}`);
         return {
           name: ai.name,
           isPlayer: false,
@@ -840,7 +846,7 @@ export class RaceScene extends Phaser.Scene {
 
     // Debug: Log de posiciones cada 2 segundos
     if (this.raceStarted && Math.floor(this.raceTime / 2000) !== Math.floor((this.raceTime - 16) / 2000)) {
-      console.log('=== Posiciones ===');
+      console.log('=== Posiciones Ordenadas ===');
       kartProgress.forEach((kart, index) => {
         console.log(`${index + 1}. ${kart.name}: vuelta=${kart.lap}, checkpoint=${kart.checkpoint}, progreso=${kart.progress}`);
       });

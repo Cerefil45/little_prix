@@ -122,7 +122,10 @@ export class AIKart extends Kart {
    * Verifica si el kart de IA ha cruzado algún checkpoint.
    */
   checkCheckpoints(): void {
-    if (this.checkpoints.length === 0) return;
+    if (this.checkpoints.length === 0) {
+      console.log(`[IA ${this.name}] ERROR: No hay checkpoints asignados`);
+      return;
+    }
 
     const kartPos = this.getPosition();
     
@@ -147,6 +150,9 @@ export class AIKart extends Kart {
       // Verificar que sea el siguiente checkpoint en la secuencia
       const expectedNext = (this.lastCheckpoint + 1) % this.checkpoints.length;
       
+      // Debug: Log cada vez que está en un checkpoint
+      console.log(`[IA ${this.name}] En checkpoint ${closestCheckpointIndex}. Esperado: ${expectedNext}. LastCheckpoint: ${this.lastCheckpoint}. Distancia: ${closestDistance.toFixed(2)}`);
+      
       if (closestCheckpointIndex === expectedNext) {
         // Verificar si completó vuelta ANTES de actualizar lastCheckpoint
         const completedLap = (closestCheckpointIndex === 0 && this.lastCheckpoint === this.checkpoints.length - 1);
@@ -154,7 +160,7 @@ export class AIKart extends Kart {
         this.lastCheckpoint = closestCheckpointIndex;
         
         // Debug: Log de checkpoint detectado
-        console.log(`[IA ${this.name}] Checkpoint ${closestCheckpointIndex} detectado. Vuelta: ${this.currentLap}, LastCheckpoint: ${this.lastCheckpoint}`);
+        console.log(`[IA ${this.name}] ✓ Checkpoint ${closestCheckpointIndex} aceptado. Vuelta: ${this.currentLap}, LastCheckpoint: ${this.lastCheckpoint}, CompletedLap: ${completedLap}`);
 
         // Si completó todos los checkpoints, completar vuelta
         if (completedLap) {
