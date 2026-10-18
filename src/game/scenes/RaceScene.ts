@@ -478,23 +478,37 @@ export class RaceScene extends Phaser.Scene {
     this.currentLap++;
     this.currentLapTime = 0; // Reset tiempo de vuelta
 
-    // Si completó todas las vueltas, emitir evento de carrera terminada
+    // Si completó todas las vueltas, terminar la carrera
     if (this.currentLap > this.totalLaps) {
-      this.raceFinished = true;
-      
-      // Calcular mejor vuelta
-      const bestLap = this.lapTimes.length > 0 
-        ? Math.min(...this.lapTimes) 
-        : this.raceTime;
-      
-      this.emitSceneEvent('raceFinished', {
-        trackName: this.track.name,
-        totalTime: this.raceTime,
-        lapTimes: [...this.lapTimes],
-        bestLap: bestLap,
-        totalLaps: this.totalLaps
-      });
+      this.finishRace();
     }
+  }
+
+  private finishRace(): void {
+    if (this.raceFinished) return; // Evitar múltiples llamadas
+    
+    this.raceFinished = true;
+    
+    // Calcular mejor vuelta del jugador
+    const bestLap = this.lapTimes.length > 0 
+      ? Math.min(...this.lapTimes) 
+      : this.raceTime;
+    
+    // Calcular posiciones finales
+    this.calculatePositions();
+    
+    // Determinar posición del jugador
+    const playerPosition = this.positions.findIndex(p => p.isPlayer) + 1;
+    
+    this.emitSceneEvent('raceFinished', {
+      trackName: this.track.name,
+      totalTime: this.raceTime,
+      lapTimes: [...this.lapTimes],
+      bestLap: bestLap,
+      totalLaps: this.totalLaps,
+      position: playerPosition,
+      positions: this.positions
+    });
   }
 
   /**
@@ -697,14 +711,10 @@ export class RaceScene extends Phaser.Scene {
           console.log(`[IA ${aiKart.name}] ¡CARRERA TERMINADA! Vuelta: ${aiKart.currentLap}, TotalLaps: ${this.totalLaps}`);
           aiKart.markFinished(this.raceTime);
           
-          // Si el jugador aún no ha terminado, la carrera continúa
-          // pero registramos que la IA terminó
+          // Si la carrera aún no ha terminado, terminarla
           if (!this.raceFinished) {
-            this.emitSceneEvent('aiFinished', { 
-              name: aiKart.name, 
-              time: this.raceTime,
-              lap: aiKart.currentLap - 1
-            });
+            console.log(`[IA ${aiKart.name}] Terminó la carrera. Finalizando juego.`);
+            this.finishRace();
           }
         }
       });

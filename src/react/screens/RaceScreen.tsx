@@ -114,16 +114,21 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
         lapTimes: number[];
         bestLap: number;
         totalLaps: number;
+        position: number;
+        positions: Array<{ name: string; isPlayer: boolean; lap: number; progress: number }>;
       };
       
+      console.log('[RaceScreen] Carrera terminada:', result);
       setTrackName(result.trackName);
+      setPlayerPosition(result.position);
       setRaceResult({
         trackName: result.trackName,
         totalTime: result.totalTime,
         lapTimes: result.lapTimes,
         bestLap: result.bestLap,
         totalLaps: result.totalLaps,
-        finishedAt: Date.now()
+        finishedAt: Date.now(),
+        position: result.position
       });
       setScreenState('finished');
     };

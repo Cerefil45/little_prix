@@ -10,6 +10,7 @@ export interface RaceResult {
   bestLap: number;         // ms
   totalLaps: number;
   finishedAt: number;      // timestamp
+  position?: number;       // posición final del jugador (1-4)
 }
 
 export interface BestRecord {

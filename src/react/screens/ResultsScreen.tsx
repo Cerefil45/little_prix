@@ -47,6 +47,27 @@ export function ResultsScreen({ result, onRestart, onMenu }: ResultsScreenProps)
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-white mb-2">🏁 Carrera Completada</h1>
           <p className="text-gray-400 text-sm">{result.trackName}</p>
+          
+          {/* Posición final */}
+          {result.position && (
+            <div className="mt-3 inline-block">
+              <div className={`text-5xl font-bold ${
+                result.position === 1 ? 'text-yellow-400' :
+                result.position === 2 ? 'text-gray-300' :
+                result.position === 3 ? 'text-orange-400' :
+                'text-gray-500'
+              }`}>
+                {result.position}º
+              </div>
+              <div className="text-sm text-gray-400 mt-1">
+                {result.position === 1 ? '¡GANASTE!' : 
+                 result.position === 2 ? '¡Excelente!' :
+                 result.position === 3 ? '¡Buen trabajo!' :
+                 'Sigue practicando'}
+              </div>
+            </div>
+          )}
+          
           {isNewRecord && (
             <div className="mt-3 inline-block px-4 py-1 bg-yellow-500/20 border border-yellow-500/50 rounded-full">
               <span className="text-yellow-300 font-bold text-sm">⭐ NUEVO RÉCORD ⭐</span>
