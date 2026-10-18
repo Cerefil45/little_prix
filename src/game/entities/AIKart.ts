@@ -94,8 +94,9 @@ export class AIKart extends Kart {
 
   /**
    * Actualiza el kart de IA cada frame.
+   * Ahora acepta información de progreso para rubber banding.
    */
-  updateAI(dt: number): void {
+  updateAI(dt: number, playerProgress?: number, aiProgress?: number): void {
     if (this.finished) return;
 
     // Actualizar índice de waypoint
@@ -104,14 +105,16 @@ export class AIKart extends Kart {
     // Verificar checkpoints
     this.checkCheckpoints();
 
-    // Calcular input de IA
+    // Calcular input de IA con rubber banding
     const input = calculateAIInput(
       this.aiState,
       this.getPosition(),
       this.physics.angle,
       this.physics.speed,
       this.waypoints,
-      this.aiConfig
+      this.aiConfig,
+      playerProgress,
+      aiProgress
     );
 
     // Actualizar física con el input de IA

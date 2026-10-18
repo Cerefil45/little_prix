@@ -18,6 +18,7 @@ export interface AIConfig {
   skillLevel: number;
   maxSpeedMultiplier: number; // 0.8-1.0, qué tan rápido va respecto al máximo
   lookAheadDistance: number; // cuántos waypoints adelante mira
+  rubberBandStrength?: number; // 0.0-0.2, fuerza del rubber banding
 }
 
 /**
@@ -35,6 +36,7 @@ export function createAIState(startWaypointIndex: number = 0): AIState {
 
 /**
  * Calcula el input que la IA debe aplicar para seguir los waypoints.
+ * Ahora incluye rubber banding para mantener carreras competitivas.
  */
 export function calculateAIInput(
   aiState: AIState,
@@ -42,7 +44,9 @@ export function calculateAIInput(
   angle: number,
   speed: number,
   waypoints: Waypoint[],
-  config: AIConfig
+  config: AIConfig,
+  playerProgress?: number,
+  aiProgress?: number
 ): InputState {
   const input: InputState = {
     accelerating: false,
@@ -81,7 +85,19 @@ export function calculateAIInput(
   const absAngleDiff = Math.abs(angleDiff);
   const isSharpTurn = absAngleDiff > 0.4;
   const isMediumTurn = absAngleDiff > 0.2;
-  const targetMaxSpeed = config.maxSpeedMultiplier * 320; // PHYSICS.MAX_SPEED
+  
+  // Aplicar rubber banding si está disponible
+  let rubberBandBoost = 1.0;
+  if (config.rubberBandStrength && playerProgress !== undefined && aiProgress !== undefined) {
+    const positionDiff = playerProgress - aiProgress;
+    // Solo aplicar boost si la IA está atrás del jugador
+    if (positionDiff > 0) {
+      rubberBandBoost = 1 + (positionDiff * config.rubberBandStrength);
+      rubberBandBoost = Math.min(rubberBandBoost, 1.2); // Máximo +20%
+    }
+  }
+  
+  const targetMaxSpeed = config.maxSpeedMultiplier * 320 * rubberBandBoost; // PHYSICS.MAX_SPEED
   
   if (isSharpTurn) {
     // Curva cerrada: frenar significativamente

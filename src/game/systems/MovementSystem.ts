@@ -88,21 +88,36 @@ export function updateMovement(
   if (input.steerLeft) steerDir = -1;
   if (input.steerRight) steerDir = 1;
 
-  // 3. Derrape
+  // 3. Derrape mejorado con transferencia de peso
   if (input.drifting && Math.abs(steerDir) > 0 && Math.abs(physics.speed) > 80) {
     if (!physics.isDrifting) {
       physics.isDrifting = true;
       physics.driftDirection = steerDir;
       physics.driftCharge = 0;
     }
-    // Cargar drift
-    physics.driftCharge = Math.min(100, physics.driftCharge + PHYSICS.DRIFT_CHARGE_RATE * dt);
-    // Giro amplificado durante drift
-    effectiveTurnRate *= PHYSICS.DRIFT_TURN_BONUS;
+    
+    // Cargar drift más rápido en curvas cerradas
+    const curveIntensity = Math.abs(steerDir) * speedRatio;
+    const chargeRate = PHYSICS.DRIFT_CHARGE_RATE * (1 + curveIntensity * 0.5);
+    physics.driftCharge = Math.min(100, physics.driftCharge + chargeRate * dt);
+    
+    // Giro amplificado durante drift, pero con más control
+    // Transferencia de peso: más peso atrás = más derrape pero menos control
+    const weightTransfer = 1 - (speedRatio * 0.2); // Menos grip a alta velocidad
+    effectiveTurnRate *= PHYSICS.DRIFT_TURN_BONUS * weightTransfer;
+    
+    // Reducir velocidad ligeramente durante drift (más realista)
+    const driftFriction = 0.98;
+    physics.speed *= driftFriction;
   } else if (physics.isDrifting) {
-    // Soltar drift → mini-turbo
+    // Soltar drift → mini-turbo con 3 niveles
     const boostLevel = physics.driftCharge >= 80 ? 3 : physics.driftCharge >= 40 ? 2 : 1;
-    physics.speed = Math.min(maxSpd * 1.3, physics.speed + boostLevel * PHYSICS.MINI_TURBO_BOOST * 0.4);
+    const boostAmount = boostLevel * PHYSICS.MINI_TURBO_BOOST * 0.4;
+    
+    // Aplicar boost progresivo (más suave)
+    physics.speed = Math.min(maxSpd * 1.3, physics.speed + boostAmount);
+    
+    // Visual feedback: el boost dura un poco más
     physics.isDrifting = false;
     physics.driftDirection = 0;
     physics.driftCharge = 0;

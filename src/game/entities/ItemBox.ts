@@ -86,21 +86,53 @@ export class ItemBox {
 
   /**
    * Recoge la caja y devuelve un item aleatorio con sistema de pesos
+   * Ahora acepta la posición del jugador para distribución estratégica
    */
-  collect(): ItemType | null {
+  collect(playerPosition?: number, totalRacers?: number): ItemType | null {
     if (!this.available) return null;
     
     this.available = false;
     this.sprite.setVisible(false);
     this.respawnTimer = 10000; // 10 segundos para respawn
 
-    // Sistema de pesos para distribución más interesante
-    // Turbo: 40%, Caparazón: 35%, Plátano: 25%
-    const weightedItems: Array<{ item: ItemType; weight: number }> = [
-      { item: 'turbo', weight: 40 },
-      { item: 'caparazon', weight: 35 },
-      { item: 'platano', weight: 25 },
-    ];
+    // Sistema de pesos basado en posición del jugador
+    let weightedItems: Array<{ item: ItemType; weight: number }>;
+    
+    if (playerPosition !== undefined && totalRacers !== undefined) {
+      const positionRatio = playerPosition / totalRacers;
+      
+      // Primer lugar (1-25%): más items defensivos
+      if (positionRatio <= 0.25) {
+        weightedItems = [
+          { item: 'platano', weight: 50 },
+          { item: 'caparazon', weight: 40 },
+          { item: 'turbo', weight: 10 },
+        ];
+      }
+      // Último lugar (75-100%): más items ofensivos
+      else if (positionRatio >= 0.75) {
+        weightedItems = [
+          { item: 'turbo', weight: 60 },
+          { item: 'caparazon', weight: 30 },
+          { item: 'platano', weight: 10 },
+        ];
+      }
+      // Posición media (25-75%): balanceado
+      else {
+        weightedItems = [
+          { item: 'turbo', weight: 40 },
+          { item: 'caparazon', weight: 35 },
+          { item: 'platano', weight: 25 },
+        ];
+      }
+    } else {
+      // Fallback: distribución balanceada
+      weightedItems = [
+        { item: 'turbo', weight: 40 },
+        { item: 'caparazon', weight: 35 },
+        { item: 'platano', weight: 25 },
+      ];
+    }
 
     // Evitar repetir el mismo item si se recogió recientemente
     const availableItems = weightedItems.filter(({ item }) => {

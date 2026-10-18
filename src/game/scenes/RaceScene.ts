@@ -79,6 +79,28 @@ export class RaceScene extends Phaser.Scene {
   }
 
   /**
+   * Calcula el progreso de un kart (jugador o IA) para rubber banding.
+   * Retorna un número que representa qué tan avanzado está el kart.
+   */
+  private calculateKartProgress(kart: Kart | AIKart): number {
+    // Para el jugador, usar las propiedades de RaceScene
+    if (kart === this.kart) {
+      const lap = this.currentLap;
+      const checkpoint = this.lastCheckpoint;
+      return (lap - 1) * this.checkpoints.length + checkpoint;
+    }
+    
+    // Para IA, usar sus propiedades
+    const aiKart = kart as AIKart;
+    const lap = aiKart.currentLap;
+    const checkpoint = aiKart.lastCheckpoint;
+    
+    // Fórmula: (vuelta - 1) * totalCheckpoints + checkpoint
+    // Esto da un número que aumenta monótonicamente con el progreso
+    return (lap - 1) * this.checkpoints.length + checkpoint;
+  }
+
+  /**
    * Aplica las estadísticas del vehículo seleccionado al kart del jugador.
    */
   private applyVehicleStats(): void {
@@ -408,19 +430,19 @@ export class RaceScene extends Phaser.Scene {
       {
         name: 'Rojo Rápido',
         color: 0xff6b6b,
-        config: { skillLevel: 0.9, maxSpeedMultiplier: 0.92, lookAheadDistance: 4 },
+        config: { skillLevel: 0.9, maxSpeedMultiplier: 0.92, lookAheadDistance: 4, rubberBandStrength: 0.10 },
         offset: 1
       },
       {
         name: 'Azul Veloz',
         color: 0x4ecdc4,
-        config: { skillLevel: 0.85, maxSpeedMultiplier: 0.88, lookAheadDistance: 3 },
+        config: { skillLevel: 0.85, maxSpeedMultiplier: 0.88, lookAheadDistance: 3, rubberBandStrength: 0.12 },
         offset: 2
       },
       {
         name: 'Verde Ágil',
         color: 0x95e1d3,
-        config: { skillLevel: 0.8, maxSpeedMultiplier: 0.85, lookAheadDistance: 3 },
+        config: { skillLevel: 0.8, maxSpeedMultiplier: 0.85, lookAheadDistance: 3, rubberBandStrength: 0.15 },
         offset: 3
       }
     ];
@@ -749,10 +771,17 @@ export class RaceScene extends Phaser.Scene {
     // Actualizar kart del jugador
     this.kart.update(dt, effectiveInput);
 
+    // Calcular progreso del jugador para rubber banding
+    const playerProgress = this.calculateKartProgress(this.kart);
+
     // Actualizar karts de IA
     if (this.raceStarted) {
       this.aiKarts.forEach(aiKart => {
-        aiKart.updateAI(dt);
+        // Calcular progreso de esta IA
+        const aiProgress = this.calculateKartProgress(aiKart);
+        
+        // Actualizar IA con información de progreso para rubber banding
+        aiKart.updateAI(dt, playerProgress, aiProgress);
         
         // Colisiones de IA con bordes
         if (this.trackBoundaries && aiKart.body) {
@@ -816,7 +845,11 @@ export class RaceScene extends Phaser.Scene {
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance < 35) {
-          const item = itemBox.collect();
+          // Calcular posición del jugador para distribución estratégica de items
+          const playerPosition = this.getPlayerPosition();
+          const totalRacers = this.aiKarts.length + 1; // +1 por el jugador
+          
+          const item = itemBox.collect(playerPosition, totalRacers);
           if (item) {
             this.playerItem = item;
             this.emitSceneEvent('itemCollected', { item });
