@@ -29,7 +29,7 @@ export const CircuitOne: TrackData = {
   startX: 800,
   startY: 180,
   startAngle: 0, // Mirando a la derecha (sentido horario)
-  waypoints: generateOvalWaypoints(800, 600, 550, 380, 24, 120),
+  waypoints: generateOvalWaypoints(800, 600, 550, 380, 24, 160),
 };
 
 /**

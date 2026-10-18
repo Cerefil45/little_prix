@@ -16,6 +16,7 @@ export class ItemBox {
   
   private scene: Phaser.Scene;
   private rotationAngle: number = 0;
+  private lastItems: ItemType[] = []; // Historial de últimos items para evitar repeticiones
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
@@ -84,7 +85,7 @@ export class ItemBox {
   }
 
   /**
-   * Recoge la caja y devuelve un item aleatorio
+   * Recoge la caja y devuelve un item aleatorio con sistema de pesos
    */
   collect(): ItemType | null {
     if (!this.available) return null;
@@ -93,9 +94,45 @@ export class ItemBox {
     this.sprite.setVisible(false);
     this.respawnTimer = 10000; // 10 segundos para respawn
 
-    // Item aleatorio
-    const items: ItemType[] = ['turbo', 'caparazon', 'platano'];
-    return items[Math.floor(Math.random() * items.length)];
+    // Sistema de pesos para distribución más interesante
+    // Turbo: 40%, Caparazón: 35%, Plátano: 25%
+    const weightedItems: Array<{ item: ItemType; weight: number }> = [
+      { item: 'turbo', weight: 40 },
+      { item: 'caparazon', weight: 35 },
+      { item: 'platano', weight: 25 },
+    ];
+
+    // Evitar repetir el mismo item si se recogió recientemente
+    const availableItems = weightedItems.filter(({ item }) => {
+      // Si el mismo item apareció en las últimas 2 veces, reducir su probabilidad
+      const recentCount = this.lastItems.filter(i => i === item).length;
+      return recentCount < 2;
+    });
+
+    // Si todos los items fueron recientes, usar todos
+    const itemsToUse = availableItems.length > 0 ? availableItems : weightedItems;
+
+    // Calcular total de pesos
+    const totalWeight = itemsToUse.reduce((sum, { weight }) => sum + weight, 0);
+    let random = Math.random() * totalWeight;
+
+    // Seleccionar item basado en pesos
+    let selectedItem: ItemType = 'turbo';
+    for (const { item, weight } of itemsToUse) {
+      random -= weight;
+      if (random <= 0) {
+        selectedItem = item;
+        break;
+      }
+    }
+
+    // Guardar en historial (mantener solo los últimos 2)
+    this.lastItems.push(selectedItem);
+    if (this.lastItems.length > 2) {
+      this.lastItems.shift();
+    }
+
+    return selectedItem;
   }
 
   /**

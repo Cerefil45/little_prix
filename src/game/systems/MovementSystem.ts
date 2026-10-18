@@ -44,7 +44,8 @@ export const PHYSICS = {
   MINI_TURBO_BOOST: 80,
   OFF_TRACK_FRICTION: 6.0,
   OFF_TRACK_MAX_SPEED: 120,
-  COLLISION_SPEED_LOSS: 0.6,
+  COLLISION_SPEED_LOSS: 0.85, // Reducido de 0.6 a 0.85 (solo 15% de pérdida)
+  COLLISION_COOLDOWN: 500, // 500ms entre colisiones
 };
 
 /**

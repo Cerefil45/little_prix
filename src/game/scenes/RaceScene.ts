@@ -334,11 +334,13 @@ export class RaceScene extends Phaser.Scene {
   private createItemBoxes(): void {
     this.itemBoxes = [];
 
-    // Posiciones de cajas de items
+    // Posiciones de cajas de items (distribuidas estratégicamente)
     const itemBoxPositions = [
-      { x: 1000, y: 250 },
-      { x: 1150, y: 600 },
-      { x: 600, y: 750 },
+      { x: 1000, y: 250 },  // Recta superior
+      { x: 1200, y: 450 },  // Curva derecha superior
+      { x: 1150, y: 700 },  // Recta derecha
+      { x: 600, y: 750 },   // Curva inferior izquierda
+      { x: 400, y: 450 },   // Recta izquierda
     ];
 
     for (const pos of itemBoxPositions) {
@@ -514,12 +516,14 @@ export class RaceScene extends Phaser.Scene {
     if (collision) {
       // Solo aplicar penalización si la velocidad es significativa
       if (Math.abs(this.kart.physics.speed) > 50) {
-        this.kart.applyCollisionPenalty();
-        this.emitSceneEvent('collision');
+        const penaltyApplied = this.kart.applyCollisionPenalty();
+        if (penaltyApplied) {
+          this.emitSceneEvent('collision');
+        }
       }
 
       // Aplicar empuje para separar el kart del borde (más suave)
-      const pushForce = (collisionThreshold - collision.distance) * 0.6;
+      const pushForce = (collisionThreshold - collision.distance) * 0.4; // Reducido de 0.6 a 0.4
       this.kart.sprite.x += collision.pushVector.x * pushForce;
       this.kart.sprite.y += collision.pushVector.y * pushForce;
     }
@@ -572,8 +576,8 @@ export class RaceScene extends Phaser.Scene {
         if (distance < collisionDistance && distance > 0) {
           // Colisión detectada
           const overlap = collisionDistance - distance;
-          const pushX = (dx / distance) * overlap * 0.5;
-          const pushY = (dy / distance) * overlap * 0.5;
+          const pushX = (dx / distance) * overlap * 0.3; // Reducido de 0.5 a 0.3
+          const pushY = (dy / distance) * overlap * 0.3; // Reducido de 0.5 a 0.3
 
           // Empujar ambos karts en direcciones opuestas
           kart1.sprite.x -= pushX;
@@ -581,7 +585,7 @@ export class RaceScene extends Phaser.Scene {
           kart2.sprite.x += pushX;
           kart2.sprite.y += pushY;
 
-          // Aplicar penalización de velocidad
+          // Aplicar penalización de velocidad (con cooldown)
           kart1.applyCollisionPenalty();
           kart2.applyCollisionPenalty();
         }

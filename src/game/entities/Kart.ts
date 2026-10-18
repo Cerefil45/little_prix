@@ -19,6 +19,7 @@ export class Kart {
   public body: Phaser.Physics.Arcade.Body | null = null;
   public isOffTrack: boolean = false;
   public driftTrail: Phaser.GameObjects.Graphics;
+  public lastCollisionTime: number = 0; // Timestamp de la última colisión
 
   private scene: Phaser.Scene;
   private driftParticles: Array<{ x: number; y: number; alpha: number; size: number }> = [];
@@ -147,10 +148,19 @@ export class Kart {
   }
 
   /**
-   * Aplica una pérdida de velocidad por colisión.
+   * Aplica una pérdida de velocidad por colisión con cooldown.
    */
-  applyCollisionPenalty(): void {
+  applyCollisionPenalty(): boolean {
+    const now = this.scene.time.now;
+    
+    // Verificar cooldown
+    if (now - this.lastCollisionTime < PHYSICS.COLLISION_COOLDOWN) {
+      return false; // Aún en cooldown, no aplicar penalización
+    }
+    
+    this.lastCollisionTime = now;
     this.physics.speed *= PHYSICS.COLLISION_SPEED_LOSS;
+    return true; // Penalización aplicada
   }
 
   /**
