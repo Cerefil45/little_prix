@@ -691,6 +691,7 @@ export class RaceScene extends Phaser.Scene {
 
         // Verificar si la IA terminó la carrera
         if (!aiKart.finished && aiKart.currentLap > this.totalLaps) {
+          console.log(`[IA ${aiKart.name}] ¡CARRERA TERMINADA! Vuelta: ${aiKart.currentLap}, TotalLaps: ${this.totalLaps}`);
           aiKart.markFinished(this.raceTime);
           
           // Si el jugador aún no ha terminado, la carrera continúa
@@ -807,7 +808,9 @@ export class RaceScene extends Phaser.Scene {
    */
   private calculatePositions(): void {
     // Calcular el progreso del jugador basado en checkpoints
-    const playerProgress = (this.currentLap - 1) * this.checkpoints.length + this.lastCheckpoint;
+    // Si lastCheckpoint es -1 (inicio), usar 0 para el cálculo
+    const playerCheckpoint = Math.max(0, this.lastCheckpoint);
+    const playerProgress = (this.currentLap - 1) * this.checkpoints.length + playerCheckpoint;
     
     // Crear array con todos los karts y su progreso
     const kartProgress = [
@@ -815,22 +818,33 @@ export class RaceScene extends Phaser.Scene {
         name: 'Jugador',
         isPlayer: true,
         lap: this.currentLap,
-        progress: playerProgress
+        progress: playerProgress,
+        checkpoint: playerCheckpoint
       },
       ...this.aiKarts.map(ai => {
         // Usar el sistema de checkpoints de la IA para calcular el progreso
-        const aiProgress = (ai.currentLap - 1) * this.checkpoints.length + ai.lastCheckpoint;
+        const aiCheckpoint = Math.max(0, ai.lastCheckpoint);
+        const aiProgress = (ai.currentLap - 1) * this.checkpoints.length + aiCheckpoint;
         return {
           name: ai.name,
           isPlayer: false,
           lap: ai.currentLap,
-          progress: aiProgress
+          progress: aiProgress,
+          checkpoint: aiCheckpoint
         };
       })
     ];
 
     // Ordenar por progreso (mayor = mejor posición)
     kartProgress.sort((a, b) => b.progress - a.progress);
+
+    // Debug: Log de posiciones cada 2 segundos
+    if (this.raceStarted && Math.floor(this.raceTime / 2000) !== Math.floor((this.raceTime - 16) / 2000)) {
+      console.log('=== Posiciones ===');
+      kartProgress.forEach((kart, index) => {
+        console.log(`${index + 1}. ${kart.name}: vuelta=${kart.lap}, checkpoint=${kart.checkpoint}, progreso=${kart.progress}`);
+      });
+    }
 
     this.positions = kartProgress;
   }

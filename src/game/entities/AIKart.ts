@@ -125,24 +125,42 @@ export class AIKart extends Kart {
     if (this.checkpoints.length === 0) return;
 
     const kartPos = this.getPosition();
-    const nextCheckpoint = (this.lastCheckpoint + 1) % this.checkpoints.length;
-    const checkpoint = this.checkpoints[nextCheckpoint];
-
-    // Calcular distancia al siguiente checkpoint
-    const dx = kartPos.x - checkpoint.x;
-    const dy = kartPos.y - checkpoint.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // Si está dentro del radio del checkpoint
-    if (distance < checkpoint.radius) {
-      // Verificar si completó vuelta ANTES de actualizar lastCheckpoint
-      const completedLap = (nextCheckpoint === 0 && this.lastCheckpoint === this.checkpoints.length - 1);
+    
+    // Buscar el checkpoint más cercano (no solo el siguiente)
+    let closestCheckpointIndex = -1;
+    let closestDistance = Infinity;
+    
+    for (let i = 0; i < this.checkpoints.length; i++) {
+      const checkpoint = this.checkpoints[i];
+      const dx = kartPos.x - checkpoint.x;
+      const dy = kartPos.y - checkpoint.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
       
-      this.lastCheckpoint = nextCheckpoint;
+      if (distance < checkpoint.radius && distance < closestDistance) {
+        closestDistance = distance;
+        closestCheckpointIndex = i;
+      }
+    }
+    
+    // Si está dentro de algún checkpoint
+    if (closestCheckpointIndex !== -1) {
+      // Verificar que sea el siguiente checkpoint en la secuencia
+      const expectedNext = (this.lastCheckpoint + 1) % this.checkpoints.length;
+      
+      if (closestCheckpointIndex === expectedNext) {
+        // Verificar si completó vuelta ANTES de actualizar lastCheckpoint
+        const completedLap = (closestCheckpointIndex === 0 && this.lastCheckpoint === this.checkpoints.length - 1);
+        
+        this.lastCheckpoint = closestCheckpointIndex;
+        
+        // Debug: Log de checkpoint detectado
+        console.log(`[IA ${this.name}] Checkpoint ${closestCheckpointIndex} detectado. Vuelta: ${this.currentLap}, LastCheckpoint: ${this.lastCheckpoint}`);
 
-      // Si completó todos los checkpoints, completar vuelta
-      if (completedLap) {
-        this.currentLap++;
+        // Si completó todos los checkpoints, completar vuelta
+        if (completedLap) {
+          this.currentLap++;
+          console.log(`[IA ${this.name}] ¡Vuelta completada! Nueva vuelta: ${this.currentLap}`);
+        }
       }
     }
   }
