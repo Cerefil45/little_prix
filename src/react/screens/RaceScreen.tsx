@@ -16,11 +16,12 @@ import type { RaceResult } from '../../core/types';
 
 interface RaceScreenProps {
   onBack: () => void;
+  vehicleId?: string;
 }
 
 type ScreenState = 'loading' | 'countdown' | 'racing' | 'finished';
 
-export function RaceScreen({ onBack }: RaceScreenProps) {
+export function RaceScreen({ onBack, vehicleId = 'balanced' }: RaceScreenProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [speed, setSpeed] = useState(0);
   const [maxSpeed] = useState(320);
@@ -220,6 +221,7 @@ export function RaceScreen({ onBack }: RaceScreenProps) {
         onProgress={handleProgress}
         inputRef={inputRef}
         sceneRef={sceneRef}
+        vehicleId={vehicleId}
       />
 
       {/* Pantalla de carga - Overlay sobre el canvas */}

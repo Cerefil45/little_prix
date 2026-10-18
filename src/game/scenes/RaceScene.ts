@@ -62,9 +62,59 @@ export class RaceScene extends Phaser.Scene {
   // Sistema de items
   private itemSystem: ItemSystem | null = null;
   private playerItem: ItemType | null = null;
+  
+  // Vehículo seleccionado
+  private vehicleId: string = 'balanced';
 
   constructor() {
     super({ key: 'RaceScene' });
+  }
+
+  /**
+   * Establece el vehículo seleccionado.
+   */
+  setVehicleId(vehicleId: string): void {
+    this.vehicleId = vehicleId;
+    console.log('RaceScene: Vehicle set to', vehicleId);
+  }
+
+  /**
+   * Aplica las estadísticas del vehículo seleccionado al kart del jugador.
+   */
+  private applyVehicleStats(): void {
+    // Stats base
+    const baseMaxSpeed = 320;
+    const baseAcceleration = 280;
+    const baseTurnRate = 3.2;
+
+    // Multipliers según el vehículo
+    let speedMultiplier = 1.0;
+    let accelMultiplier = 1.0;
+    let handlingMultiplier = 1.0;
+
+    switch (this.vehicleId) {
+      case 'speed':
+        speedMultiplier = 1.2;
+        accelMultiplier = 0.85;
+        handlingMultiplier = 0.8;
+        break;
+      case 'agile':
+        speedMultiplier = 0.85;
+        accelMultiplier = 1.0;
+        handlingMultiplier = 1.3;
+        break;
+      case 'balanced':
+      default:
+        // Stats balanceados, sin cambios
+        break;
+    }
+
+    // Aplicar al kart
+    this.kart.physics.maxSpeed = baseMaxSpeed * speedMultiplier;
+    this.kart.physics.acceleration = baseAcceleration * accelMultiplier;
+    this.kart.physics.turnRate = baseTurnRate * handlingMultiplier;
+
+    console.log(`RaceScene: Applied vehicle stats - Speed: ${speedMultiplier}x, Accel: ${accelMultiplier}x, Handling: ${handlingMultiplier}x`);
   }
 
   /**
@@ -112,7 +162,10 @@ export class RaceScene extends Phaser.Scene {
         this.track.startY,
         this.track.startAngle
       );
-      console.log('RaceScene: Player kart created');
+      
+      // Aplicar stats del vehículo seleccionado
+      this.applyVehicleStats();
+      console.log('RaceScene: Player kart created with vehicle:', this.vehicleId);
 
       // Configurar cámara
       this.cameras.main.startFollow(this.kart.sprite, true, 0.08, 0.08);

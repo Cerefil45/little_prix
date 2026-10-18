@@ -35,9 +35,10 @@ interface GameCanvasProps {
   onProgress?: (progress: number) => void;
   inputRef: React.MutableRefObject<InputState>;
   sceneRef: React.MutableRefObject<RaceScene | null>;
+  vehicleId?: string;
 }
 
-export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, sceneRef }: GameCanvasProps) {
+export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, sceneRef, vehicleId = 'balanced' }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const gameRef = useRef<Phaser.Game | null>(null);
   const animFrameRef = useRef<number>(0);
@@ -114,6 +115,9 @@ export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, scene
       console.log('GameCanvas: Scene found, configuring...');
       onProgressRef.current?.(70);
       sceneRef.current = scene;
+      
+      // Establecer el vehículo seleccionado
+      scene.setVehicleId(vehicleId);
 
       // Registrar callbacks
       if (onStateUpdateRef.current) {

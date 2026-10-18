@@ -1,5 +1,6 @@
 import { useState, lazy, Suspense } from 'react';
 import { StartScreen } from './react/screens/StartScreen';
+import { VehicleSelect, vehicles } from './react/screens/VehicleSelect';
 
 const RaceScreen = lazy(() =>
   import('./react/screens/RaceScreen').then(m => ({ default: m.RaceScreen }))
@@ -27,7 +28,21 @@ const sections = [
 export default function App() {
   const [activeSection, setActiveSection] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [screen, setScreen] = useState<'docs' | 'start' | 'race' | 'roadmap'>('docs');
+  const [screen, setScreen] = useState<'docs' | 'start' | 'vehicle-select' | 'race' | 'roadmap'>('docs');
+  const [selectedVehicleId, setSelectedVehicleId] = useState<string>(vehicles[0].id);
+
+  // Si estamos en la pantalla de selección de vehículo
+  if (screen === 'vehicle-select') {
+    return (
+      <VehicleSelect
+        onBack={() => setScreen('start')}
+        onSelect={(vehicleId) => {
+          setSelectedVehicleId(vehicleId);
+          setScreen('race');
+        }}
+      />
+    );
+  }
 
   // Si estamos en la pantalla de carrera, renderizar solo el juego
   if (screen === 'race') {
@@ -37,7 +52,7 @@ export default function App() {
           <div className="text-white text-xl">Cargando circuito...</div>
         </div>
       }>
-        <RaceScreen onBack={() => setScreen('start')} />
+        <RaceScreen onBack={() => setScreen('start')} vehicleId={selectedVehicleId} />
       </Suspense>
     );
   }
@@ -58,7 +73,7 @@ export default function App() {
   // Si estamos en la pantalla de inicio
   if (screen === 'start') {
     return <StartScreen 
-      onPlay={() => setScreen('race')} 
+      onPlay={() => setScreen('vehicle-select')} 
       onBack={() => setScreen('docs')}
       onRoadmap={() => setScreen('roadmap')}
     />;

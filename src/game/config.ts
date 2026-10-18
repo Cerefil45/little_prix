@@ -9,7 +9,7 @@ import { RaceScene } from './scenes/RaceScene';
 /**
  * Crea la configuración de Phaser para el juego.
  */
-export function createGameConfig(parent: string | HTMLElement): Phaser.Types.Core.GameConfig {
+export function createGameConfig(parent: string | HTMLElement, vehicleId: string = 'balanced'): Phaser.Types.Core.GameConfig {
   return {
     type: Phaser.AUTO,
     parent,

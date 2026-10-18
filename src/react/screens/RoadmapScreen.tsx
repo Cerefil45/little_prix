@@ -12,7 +12,7 @@ interface RoadmapScreenProps {
 type Version = 'current' | 'v0.3' | 'v0.4' | 'v0.5' | 'v1.0';
 
 export function RoadmapScreen({ onBack }: RoadmapScreenProps) {
-  const [selectedVersion, setSelectedVersion] = useState<Version>('v0.3');
+  const [selectedVersion, setSelectedVersion] = useState<Version>('v0.4');
 
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-gray-950 to-black overflow-y-auto">
@@ -41,22 +41,22 @@ export function RoadmapScreen({ onBack }: RoadmapScreenProps) {
           <div className="flex items-center gap-3 mb-3">
             <span className="text-3xl">✅</span>
             <div>
-              <h2 className="text-xl font-bold text-green-300">v0.2 Completado</h2>
-              <p className="text-sm text-green-400">Ciclo de juego completo y funcional</p>
+              <h2 className="text-xl font-bold text-green-300">v0.3 Completado</h2>
+              <p className="text-sm text-green-400">Contenido y variedad añadidos</p>
             </div>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <div className="bg-black/30 rounded p-2">
-              <div className="text-green-400 font-bold">✓ Cronómetro</div>
+              <div className="text-green-400 font-bold">✓ Monedas</div>
             </div>
             <div className="bg-black/30 rounded p-2">
-              <div className="text-green-400 font-bold">✓ Countdown</div>
+              <div className="text-green-400 font-bold">✓ Cajas de Items</div>
             </div>
             <div className="bg-black/30 rounded p-2">
-              <div className="text-green-400 font-bold">✓ Resultados</div>
+              <div className="text-green-400 font-bold">✓ Sistema de Items</div>
             </div>
             <div className="bg-black/30 rounded p-2">
-              <div className="text-green-400 font-bold">✓ Récords</div>
+              <div className="text-green-400 font-bold">✓ Selección Vehículo</div>
             </div>
             <div className="bg-black/30 rounded p-2">
               <div className="text-green-400 font-bold">✓ Rivales IA</div>
@@ -68,7 +68,7 @@ export function RoadmapScreen({ onBack }: RoadmapScreenProps) {
               <div className="text-green-400 font-bold">✓ Posiciones</div>
             </div>
             <div className="bg-black/30 rounded p-2">
-              <div className="text-green-400 font-bold">✓ Controles Táctiles</div>
+              <div className="text-green-400 font-bold">✓ Finalización Carrera</div>
             </div>
           </div>
         </div>
@@ -93,7 +93,7 @@ export function RoadmapScreen({ onBack }: RoadmapScreenProps) {
               <VersionNode
                 version="v0.3"
                 title="Contenido y Variedad"
-                status="next"
+                status="completed"
                 duration="1-2 semanas"
                 onClick={() => setSelectedVersion('v0.3')}
                 selected={selectedVersion === 'v0.3'}
@@ -209,49 +209,49 @@ function CurrentVersionDetail() {
 function V03Detail() {
   return (
     <div>
-      <h3 className="text-2xl font-bold text-blue-300 mb-4">🎯 v0.3 - Contenido y Variedad</h3>
+      <h3 className="text-2xl font-bold text-green-300 mb-4">✅ v0.3 - Completado</h3>
       <p className="text-gray-300 mb-4">
-        Añadir elementos que hagan el juego más rico y rejugarble.
+        Elementos añadidos para hacer el juego más rico y rejugarble.
       </p>
       
       <div className="space-y-4">
         <FeatureCard
-          title="Monedas"
+          title="Monedas ✓"
           priority="alta"
           effort="3-4h"
           description="Coleccionables esparcidos por el circuito que dan boost menor de velocidad al recogerlos."
-          criteria={['Aparecen 8-12 monedas en el circuito', 'Se recogen al pasar por encima', 'Dan +10% velocidad por 2 segundos', 'Respawan después de 5 segundos']}
+          criteria={['✓ Aparecen 10 monedas en el circuito', '✓ Se recogen al pasar por encima', '✓ Dan +50 velocidad', '✓ Respawan después de 5 segundos']}
         />
         
         <FeatureCard
-          title="Cajas de Items"
+          title="Cajas de Items ✓"
           priority="alta"
           effort="3-4h"
           description="Cajas que aparecen en posiciones fijas y otorgan un item aleatorio al pasar por ellas."
-          criteria={['3-4 cajas distribuidas en el circuito', 'Respawan cada 10 segundos', 'Otorgan 1 item aleatorio', 'Animación de rotación']}
+          criteria={['✓ 5 cajas distribuidas en el circuito', '✓ Respawan cada 10 segundos', '✓ Otorgan 1 item aleatorio', '✓ Animación de rotación']}
         />
         
         <FeatureCard
-          title="Sistema de Items (2-3 tipos)"
+          title="Sistema de Items ✓"
           priority="alta"
           effort="6-8h"
           description="Items utilizables con efectos diferentes."
           criteria={[
-            'Turbo: boost de velocidad por 3 segundos',
-            'Caparazón: impacta al rival más cercano y lo detiene 2s',
-            'Plátano: trampa estática que detiene al que la pisa',
+            '✓ Turbo: boost de velocidad x1.5 por 3 segundos',
+            '✓ Caparazón: impacta al rival más cercano y lo detiene 2s',
+            '✓ Plátano: trampa estática que detiene al que la pisa',
           ]}
         />
         
         <FeatureCard
-          title="Selección de Vehículo"
+          title="Selección de Vehículo ✓"
           priority="media"
           effort="4-5h"
-          description="2-3 karts con estadísticas diferentes."
+          description="3 karts con estadísticas diferentes."
           criteria={[
-            'Kart Rápido: +15% velocidad, -10% manejo',
-            'Kart Ágil: +20% manejo, -10% velocidad',
-            'Kart Balanceado: stats neutrales',
+            '✓ Relámpago: stats balanceados',
+            '✓ Turbo Max: +20% velocidad, -15% aceleración, -20% manejo',
+            '✓ Serpiente: -15% velocidad, +25% manejo',
           ]}
         />
         
@@ -264,12 +264,12 @@ function V03Detail() {
         />
       </div>
 
-      <div className="mt-6 bg-blue-900/20 border border-blue-700 rounded-lg p-4">
-        <h4 className="text-blue-300 font-bold mb-2">📊 Estimación Total:</h4>
+      <div className="mt-6 bg-green-900/20 border border-green-700 rounded-lg p-4">
+        <h4 className="text-green-300 font-bold mb-2">📊 Estado:</h4>
         <p className="text-sm text-gray-300">
-          <strong>Duración:</strong> 1-2 semanas<br />
-          <strong>Esfuerzo:</strong> 20-26 horas<br />
-          <strong>Impacto:</strong> Alto - El juego se vuelve mucho más rejugarble
+          <strong>Completado:</strong> 4 de 5 features<br />
+          <strong>Pendiente:</strong> Segundo circuito<br />
+          <strong>Impacto:</strong> Alto - El juego es mucho más rejugarble
         </p>
       </div>
     </div>
