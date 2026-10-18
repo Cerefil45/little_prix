@@ -308,22 +308,17 @@ export class RaceScene extends Phaser.Scene {
     this.coins = [];
     this.coinCount = 0;
 
-    // Posiciones de monedas a lo largo del circuito
-    const coinPositions = [
-      { x: 900, y: 200 },
-      { x: 1100, y: 300 },
-      { x: 1200, y: 500 },
-      { x: 1100, y: 700 },
-      { x: 900, y: 800 },
-      { x: 700, y: 800 },
-      { x: 500, y: 700 },
-      { x: 400, y: 500 },
-      { x: 500, y: 300 },
-      { x: 700, y: 200 },
-    ];
+    // Generar posiciones de monedas dinámicamente basadas en los waypoints
+    const waypoints = this.track.waypoints;
+    const coinCount = 10;
+    const interval = Math.floor(waypoints.length / coinCount);
 
-    for (const pos of coinPositions) {
-      const coin = new Coin(this, pos.x, pos.y);
+    for (let i = 0; i < coinCount; i++) {
+      const wpIndex = (i * interval) % waypoints.length;
+      const wp = waypoints[wpIndex];
+      
+      // Crear moneda en el waypoint (centro de la pista)
+      const coin = new Coin(this, wp.x, wp.y);
       this.coins.push(coin);
     }
   }
@@ -334,17 +329,18 @@ export class RaceScene extends Phaser.Scene {
   private createItemBoxes(): void {
     this.itemBoxes = [];
 
-    // Posiciones de cajas de items (distribuidas estratégicamente)
-    const itemBoxPositions = [
-      { x: 1000, y: 250 },  // Recta superior
-      { x: 1200, y: 450 },  // Curva derecha superior
-      { x: 1150, y: 700 },  // Recta derecha
-      { x: 600, y: 750 },   // Curva inferior izquierda
-      { x: 400, y: 450 },   // Recta izquierda
-    ];
+    // Generar posiciones de cajas de items dinámicamente basadas en los waypoints
+    const waypoints = this.track.waypoints;
+    const boxCount = 5;
+    const interval = Math.floor(waypoints.length / boxCount);
 
-    for (const pos of itemBoxPositions) {
-      const itemBox = new ItemBox(this, pos.x, pos.y);
+    for (let i = 0; i < boxCount; i++) {
+      // Distribuir las cajas en diferentes puntos del circuito
+      const wpIndex = ((i * interval) + Math.floor(interval / 2)) % waypoints.length;
+      const wp = waypoints[wpIndex];
+      
+      // Crear caja de items en el waypoint (centro de la pista)
+      const itemBox = new ItemBox(this, wp.x, wp.y);
       this.itemBoxes.push(itemBox);
     }
   }
@@ -692,6 +688,21 @@ export class RaceScene extends Phaser.Scene {
         if (this.trackBoundaries && aiKart.body) {
           this.checkAIBoundaryCollisions(aiKart);
         }
+
+        // Verificar si la IA terminó la carrera
+        if (!aiKart.finished && aiKart.currentLap > this.totalLaps) {
+          aiKart.markFinished(this.raceTime);
+          
+          // Si el jugador aún no ha terminado, la carrera continúa
+          // pero registramos que la IA terminó
+          if (!this.raceFinished) {
+            this.emitSceneEvent('aiFinished', { 
+              name: aiKart.name, 
+              time: this.raceTime,
+              lap: aiKart.currentLap - 1
+            });
+          }
+        }
       });
 
       // Colisiones kart-kart
@@ -795,26 +806,8 @@ export class RaceScene extends Phaser.Scene {
    * Calcula las posiciones de todos los karts en la carrera.
    */
   private calculatePositions(): void {
-    // Calcular el progreso del jugador basado en waypoints
-    const playerPos = this.kart.getPosition();
-    let playerWaypointIndex = 0;
-    let minDistance = Infinity;
-    
-    // Encontrar el waypoint más cercano al jugador
-    for (let i = 0; i < this.track.waypoints.length; i++) {
-      const wp = this.track.waypoints[i];
-      const dx = playerPos.x - wp.x;
-      const dy = playerPos.y - wp.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        playerWaypointIndex = i;
-      }
-    }
-    
-    // Progreso total = vueltas completadas * waypoints + waypoint actual
-    const playerProgress = (this.currentLap - 1) * this.track.waypoints.length + playerWaypointIndex;
+    // Calcular el progreso del jugador basado en checkpoints
+    const playerProgress = (this.currentLap - 1) * this.checkpoints.length + this.lastCheckpoint;
     
     // Crear array con todos los karts y su progreso
     const kartProgress = [
@@ -825,7 +818,8 @@ export class RaceScene extends Phaser.Scene {
         progress: playerProgress
       },
       ...this.aiKarts.map(ai => {
-        const aiProgress = (ai.currentLap - 1) * this.track.waypoints.length + ai.getProgress();
+        // Usar el sistema de checkpoints de la IA para calcular el progreso
+        const aiProgress = (ai.currentLap - 1) * this.checkpoints.length + ai.lastCheckpoint;
         return {
           name: ai.name,
           isPlayer: false,

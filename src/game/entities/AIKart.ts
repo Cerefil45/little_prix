@@ -135,10 +135,13 @@ export class AIKart extends Kart {
 
     // Si está dentro del radio del checkpoint
     if (distance < checkpoint.radius) {
+      // Verificar si completó vuelta ANTES de actualizar lastCheckpoint
+      const completedLap = (nextCheckpoint === 0 && this.lastCheckpoint === this.checkpoints.length - 1);
+      
       this.lastCheckpoint = nextCheckpoint;
 
       // Si completó todos los checkpoints, completar vuelta
-      if (nextCheckpoint === 0 && this.lastCheckpoint === this.checkpoints.length - 1) {
+      if (completedLap) {
         this.currentLap++;
       }
     }
