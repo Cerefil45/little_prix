@@ -114,10 +114,6 @@ export class RaceScene extends Phaser.Scene {
       );
       console.log('RaceScene: Player kart created');
 
-      // Crear rivales IA
-      this.createAIKarts();
-      console.log('RaceScene: AI karts created');
-
       // Configurar cámara
       this.cameras.main.startFollow(this.kart.sprite, true, 0.08, 0.08);
       this.cameras.main.setZoom(1.2);
@@ -127,9 +123,13 @@ export class RaceScene extends Phaser.Scene {
       this.setupBoundaryCollisions();
       console.log('RaceScene: Boundary collisions setup');
 
-      // Inicializar checkpoints para sistema de vueltas
+      // Inicializar checkpoints para sistema de vueltas (ANTES de crear IAs)
       this.setupCheckpoints();
       console.log('RaceScene: Checkpoints setup');
+
+      // Crear rivales IA (DESPUÉS de setupCheckpoints)
+      this.createAIKarts();
+      console.log('RaceScene: AI karts created');
 
       // Crear monedas
       this.createCoins();
