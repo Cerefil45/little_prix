@@ -6,9 +6,10 @@
 interface StartScreenProps {
   onPlay: () => void;
   onBack: () => void;
+  onRoadmap: () => void;
 }
 
-export function StartScreen({ onPlay, onBack }: StartScreenProps) {
+export function StartScreen({ onPlay, onBack, onRoadmap }: StartScreenProps) {
   return (
     <div className="fixed inset-0 bg-gradient-to-b from-gray-900 via-gray-950 to-black flex flex-col items-center justify-center p-4">
       {/* Fondo decorativo */}
@@ -30,7 +31,7 @@ export function StartScreen({ onPlay, onBack }: StartScreenProps) {
           <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight">
             Little Grand Prix
           </h1>
-          <p className="text-gray-400 mt-2 text-sm">Prototipo v0.1 — Circuito Inicial</p>
+          <p className="text-gray-400 mt-2 text-sm">Prototipo v0.2 — Circuito Inicial</p>
         </div>
 
         {/* Info del circuito */}
@@ -65,6 +66,14 @@ export function StartScreen({ onPlay, onBack }: StartScreenProps) {
               shadow-lg shadow-green-600/30"
           >
             🏁 INICIAR CARRERA
+          </button>
+          <button
+            onClick={onRoadmap}
+            className="w-full py-3 px-6 rounded-xl bg-blue-600 hover:bg-blue-500
+              text-white font-bold text-lg transition-all transform hover:scale-105
+              shadow-lg shadow-blue-600/30"
+          >
+            🗺️ Ver Roadmap
           </button>
           <button
             onClick={onBack}

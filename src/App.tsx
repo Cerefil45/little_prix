@@ -5,6 +5,10 @@ const RaceScreen = lazy(() =>
   import('./react/screens/RaceScreen').then(m => ({ default: m.RaceScreen }))
 );
 
+const RoadmapScreen = lazy(() =>
+  import('./react/screens/RoadmapScreen').then(m => ({ default: m.RoadmapScreen }))
+);
+
 const sections = [
   { id: 'overview', label: '0. Resumen', icon: '🏁' },
   { id: 'architecture', label: '1. Arquitectura', icon: '🏗️' },
@@ -23,7 +27,7 @@ const sections = [
 export default function App() {
   const [activeSection, setActiveSection] = useState('overview');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [screen, setScreen] = useState<'docs' | 'start' | 'race'>('docs');
+  const [screen, setScreen] = useState<'docs' | 'start' | 'race' | 'roadmap'>('docs');
 
   // Si estamos en la pantalla de carrera, renderizar solo el juego
   if (screen === 'race') {
@@ -38,9 +42,26 @@ export default function App() {
     );
   }
 
+  // Si estamos en la pantalla de roadmap
+  if (screen === 'roadmap') {
+    return (
+      <Suspense fallback={
+        <div className="fixed inset-0 bg-gray-950 flex items-center justify-center">
+          <div className="text-white text-xl">Cargando roadmap...</div>
+        </div>
+      }>
+        <RoadmapScreen onBack={() => setScreen('start')} />
+      </Suspense>
+    );
+  }
+
   // Si estamos en la pantalla de inicio
   if (screen === 'start') {
-    return <StartScreen onPlay={() => setScreen('race')} onBack={() => setScreen('docs')} />;
+    return <StartScreen 
+      onPlay={() => setScreen('race')} 
+      onBack={() => setScreen('docs')}
+      onRoadmap={() => setScreen('roadmap')}
+    />;
   }
 
   return (
