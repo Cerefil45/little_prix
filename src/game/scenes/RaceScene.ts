@@ -347,27 +347,44 @@ export class RaceScene extends Phaser.Scene {
     if (!this.kart || this.checkpoints.length === 0) return;
 
     const kartPos = this.kart.getPosition();
-    const nextCheckpoint = (this.lastCheckpoint + 1) % this.checkpoints.length;
-    const checkpoint = this.checkpoints[nextCheckpoint];
-
-    // Calcular distancia al siguiente checkpoint
-    const dx = kartPos.x - checkpoint.x;
-    const dy = kartPos.y - checkpoint.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-
-    // Si está dentro del radio del checkpoint
-    if (distance < checkpoint.radius) {
-      this.lastCheckpoint = nextCheckpoint;
-
-      // Si completó todos los checkpoints, completar vuelta
-      if (nextCheckpoint === 0 && this.checkpoints.length > 1) {
-        this.completeLap();
+    
+    // Buscar el checkpoint más cercano
+    let closestCheckpointIndex = -1;
+    let closestDistance = Infinity;
+    
+    for (let i = 0; i < this.checkpoints.length; i++) {
+      const checkpoint = this.checkpoints[i];
+      const dx = kartPos.x - checkpoint.x;
+      const dy = kartPos.y - checkpoint.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < checkpoint.radius && distance < closestDistance) {
+        closestDistance = distance;
+        closestCheckpointIndex = i;
       }
-
-      this.emitSceneEvent('checkpoint', {
-        checkpoint: nextCheckpoint,
-        total: this.checkpoints.length
-      });
+    }
+    
+    // Si está dentro de algún checkpoint
+    if (closestCheckpointIndex !== -1) {
+      // Verificar que sea el siguiente checkpoint en la secuencia
+      const expectedNext = (this.lastCheckpoint + 1) % this.checkpoints.length;
+      
+      if (closestCheckpointIndex === expectedNext) {
+        this.lastCheckpoint = closestCheckpointIndex;
+        
+        // Si acaba de tocar el checkpoint 0 después de haber pasado por todos los demás
+        if (closestCheckpointIndex === 0 && this.lastCheckpoint === 0) {
+          // Verificar que no sea el inicio de la carrera
+          if (this.raceStarted && this.currentLapTime > 0) {
+            this.completeLap();
+          }
+        }
+        
+        this.emitSceneEvent('checkpoint', {
+          checkpoint: closestCheckpointIndex,
+          total: this.checkpoints.length
+        });
+      }
     }
   }
 
@@ -638,20 +655,44 @@ export class RaceScene extends Phaser.Scene {
    * Calcula las posiciones de todos los karts en la carrera.
    */
   private calculatePositions(): void {
+    // Calcular el progreso del jugador basado en waypoints
+    const playerPos = this.kart.getPosition();
+    let playerWaypointIndex = 0;
+    let minDistance = Infinity;
+    
+    // Encontrar el waypoint más cercano al jugador
+    for (let i = 0; i < this.track.waypoints.length; i++) {
+      const wp = this.track.waypoints[i];
+      const dx = playerPos.x - wp.x;
+      const dy = playerPos.y - wp.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      if (distance < minDistance) {
+        minDistance = distance;
+        playerWaypointIndex = i;
+      }
+    }
+    
+    // Progreso total = vueltas completadas * waypoints + waypoint actual
+    const playerProgress = (this.currentLap - 1) * this.track.waypoints.length + playerWaypointIndex;
+    
     // Crear array con todos los karts y su progreso
     const kartProgress = [
       {
         name: 'Jugador',
         isPlayer: true,
         lap: this.currentLap,
-        progress: this.lastCheckpoint + (this.currentLap - 1) * this.checkpoints.length
+        progress: playerProgress
       },
-      ...this.aiKarts.map(ai => ({
-        name: ai.name,
-        isPlayer: false,
-        lap: ai.currentLap,
-        progress: ai.getProgress()
-      }))
+      ...this.aiKarts.map(ai => {
+        const aiProgress = (ai.currentLap - 1) * this.track.waypoints.length + ai.getProgress();
+        return {
+          name: ai.name,
+          isPlayer: false,
+          lap: ai.currentLap,
+          progress: aiProgress
+        };
+      })
     ];
 
     // Ordenar por progreso (mayor = mejor posición)

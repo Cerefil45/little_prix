@@ -145,10 +145,10 @@ export class AIKart extends Kart {
   }
 
   /**
-   * Obtiene el progreso total del kart (vueltas + checkpoints).
+   * Obtiene el índice del waypoint actual.
    */
   getProgress(): number {
-    return this.lastCheckpoint + (this.currentLap - 1) * this.checkpoints.length;
+    return this.aiState.currentWaypointIndex;
   }
 
   /**

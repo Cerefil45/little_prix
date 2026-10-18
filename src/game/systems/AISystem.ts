@@ -145,12 +145,22 @@ export function updateWaypointIndex(
   waypoints: Waypoint[]
 ): void {
   const currentWaypoint = waypoints[aiState.currentWaypointIndex];
-  const dx = position.x - currentWaypoint.x;
-  const dy = position.y - currentWaypoint.y;
-  const distance = Math.sqrt(dx * dx + dy * dy);
-
-  // Si está cerca del waypoint actual, avanzar al siguiente
-  if (distance < 80) {
+  const nextWaypoint = waypoints[(aiState.currentWaypointIndex + 1) % waypoints.length];
+  
+  // Calcular distancia al waypoint actual
+  const dxCurrent = position.x - currentWaypoint.x;
+  const dyCurrent = position.y - currentWaypoint.y;
+  const distanceCurrent = Math.sqrt(dxCurrent * dxCurrent + dyCurrent * dyCurrent);
+  
+  // Calcular distancia al siguiente waypoint
+  const dxNext = position.x - nextWaypoint.x;
+  const dyNext = position.y - nextWaypoint.y;
+  const distanceNext = Math.sqrt(dxNext * dxNext + dyNext * dyNext);
+  
+  // Avanzar al siguiente waypoint si:
+  // 1. Está muy cerca del actual (< 60px), O
+  // 2. Está más cerca del siguiente que del actual
+  if (distanceCurrent < 60 || distanceNext < distanceCurrent) {
     aiState.currentWaypointIndex = (aiState.currentWaypointIndex + 1) % waypoints.length;
   }
 }
