@@ -808,14 +808,33 @@ export class RaceScene extends Phaser.Scene {
 
   /**
    * Calcula las posiciones de todos los karts en la carrera.
+   * Usa una combinación de vueltas completadas + progreso basado en waypoints.
    */
   private calculatePositions(): void {
-    // Calcular el progreso del jugador basado en checkpoints
-    // Si lastCheckpoint es -1 (inicio), usar 0 para el cálculo
-    const playerCheckpoint = Math.max(0, this.lastCheckpoint);
-    const playerProgress = (this.currentLap - 1) * this.checkpoints.length + playerCheckpoint;
-    
-    console.log(`[DEBUG] Jugador: vuelta=${this.currentLap}, lastCheckpoint=${this.lastCheckpoint}, checkpoint=${playerCheckpoint}, progreso=${playerProgress}`);
+    // Función auxiliar para calcular progreso basado en waypoint más cercano
+    const calculateWaypointProgress = (position: { x: number; y: number }): number => {
+      let closestWaypointIndex = 0;
+      let minDistance = Infinity;
+      
+      for (let i = 0; i < this.track.waypoints.length; i++) {
+        const wp = this.track.waypoints[i];
+        const dx = position.x - wp.x;
+        const dy = position.y - wp.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestWaypointIndex = i;
+        }
+      }
+      
+      return closestWaypointIndex;
+    };
+
+    // Calcular progreso del jugador
+    const playerPos = this.kart.getPosition();
+    const playerWaypointProgress = calculateWaypointProgress(playerPos);
+    const playerProgress = (this.currentLap - 1) * this.track.waypoints.length + playerWaypointProgress;
     
     // Crear array con todos los karts y su progreso
     const kartProgress = [
@@ -824,19 +843,19 @@ export class RaceScene extends Phaser.Scene {
         isPlayer: true,
         lap: this.currentLap,
         progress: playerProgress,
-        checkpoint: playerCheckpoint
+        waypoint: playerWaypointProgress
       },
       ...this.aiKarts.map(ai => {
-        // Usar el sistema de checkpoints de la IA para calcular el progreso
-        const aiCheckpoint = Math.max(0, ai.lastCheckpoint);
-        const aiProgress = (ai.currentLap - 1) * this.checkpoints.length + aiCheckpoint;
-        console.log(`[DEBUG] ${ai.name}: vuelta=${ai.currentLap}, lastCheckpoint=${ai.lastCheckpoint}, checkpoint=${aiCheckpoint}, progreso=${aiProgress}`);
+        const aiPos = ai.getPosition();
+        const aiWaypointProgress = calculateWaypointProgress(aiPos);
+        const aiProgress = (ai.currentLap - 1) * this.track.waypoints.length + aiWaypointProgress;
+        
         return {
           name: ai.name,
           isPlayer: false,
           lap: ai.currentLap,
           progress: aiProgress,
-          checkpoint: aiCheckpoint
+          waypoint: aiWaypointProgress
         };
       })
     ];
@@ -844,11 +863,11 @@ export class RaceScene extends Phaser.Scene {
     // Ordenar por progreso (mayor = mejor posición)
     kartProgress.sort((a, b) => b.progress - a.progress);
 
-    // Debug: Log de posiciones cada 2 segundos
-    if (this.raceStarted && Math.floor(this.raceTime / 2000) !== Math.floor((this.raceTime - 16) / 2000)) {
-      console.log('=== Posiciones Ordenadas ===');
+    // Debug: Log de posiciones cada 3 segundos
+    if (this.raceStarted && Math.floor(this.raceTime / 3000) !== Math.floor((this.raceTime - 16) / 3000)) {
+      console.log('=== Posiciones ===');
       kartProgress.forEach((kart, index) => {
-        console.log(`${index + 1}. ${kart.name}: vuelta=${kart.lap}, checkpoint=${kart.checkpoint}, progreso=${kart.progress}`);
+        console.log(`${index + 1}. ${kart.name}: vuelta=${kart.lap}, waypoint=${kart.waypoint}, progreso=${kart.progress}`);
       });
     }
 

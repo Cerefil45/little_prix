@@ -129,7 +129,7 @@ export class AIKart extends Kart {
 
     const kartPos = this.getPosition();
     
-    // Buscar el checkpoint más cercano (no solo el siguiente)
+    // Buscar el checkpoint más cercano
     let closestCheckpointIndex = -1;
     let closestDistance = Infinity;
     
@@ -139,19 +139,24 @@ export class AIKart extends Kart {
       const dy = kartPos.y - checkpoint.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
       
-      if (distance < checkpoint.radius && distance < closestDistance) {
+      if (distance < closestDistance) {
         closestDistance = distance;
         closestCheckpointIndex = i;
       }
     }
     
+    // Debug: Log cada 60 frames (1 segundo) para ver la distancia al checkpoint más cercano
+    if (this.aiState.stuckTimer % 60 === 0) {
+      const checkpoint = this.checkpoints[closestCheckpointIndex];
+      console.log(`[IA ${this.name}] Checkpoint más cercano: ${closestCheckpointIndex}, distancia: ${closestDistance.toFixed(2)}, radio: ${checkpoint.radius}, dentro: ${closestDistance < checkpoint.radius}`);
+    }
+    
     // Si está dentro de algún checkpoint
-    if (closestCheckpointIndex !== -1) {
+    if (closestDistance < this.checkpoints[closestCheckpointIndex].radius) {
       // Verificar que sea el siguiente checkpoint en la secuencia
       const expectedNext = (this.lastCheckpoint + 1) % this.checkpoints.length;
       
-      // Debug: Log cada vez que está en un checkpoint
-      console.log(`[IA ${this.name}] En checkpoint ${closestCheckpointIndex}. Esperado: ${expectedNext}. LastCheckpoint: ${this.lastCheckpoint}. Distancia: ${closestDistance.toFixed(2)}`);
+      console.log(`[IA ${this.name}] En checkpoint ${closestCheckpointIndex}. Esperado: ${expectedNext}. LastCheckpoint: ${this.lastCheckpoint}`);
       
       if (closestCheckpointIndex === expectedNext) {
         // Verificar si completó vuelta ANTES de actualizar lastCheckpoint
@@ -159,8 +164,7 @@ export class AIKart extends Kart {
         
         this.lastCheckpoint = closestCheckpointIndex;
         
-        // Debug: Log de checkpoint detectado
-        console.log(`[IA ${this.name}] ✓ Checkpoint ${closestCheckpointIndex} aceptado. Vuelta: ${this.currentLap}, LastCheckpoint: ${this.lastCheckpoint}, CompletedLap: ${completedLap}`);
+        console.log(`[IA ${this.name}] ✓ Checkpoint ${closestCheckpointIndex} aceptado. CompletedLap: ${completedLap}`);
 
         // Si completó todos los checkpoints, completar vuelta
         if (completedLap) {
