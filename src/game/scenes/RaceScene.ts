@@ -175,8 +175,14 @@ export class RaceScene extends Phaser.Scene {
   /**
    * Inicializa la escena con datos del circuito.
    */
-  init(data: { track?: TrackData; trackId?: string }): void {
-    console.log('RaceScene: init() called');
+  init(data: { track?: TrackData; trackId?: string; vehicleId?: string }): void {
+    console.log('RaceScene: init() called with data:', data);
+    
+    // Establecer vehicleId si se proporciona
+    if (data.vehicleId) {
+      this.vehicleId = data.vehicleId;
+      console.log('RaceScene: Vehicle initialized:', this.vehicleId);
+    }
     
     // Seleccionar circuito basado en trackId
     if (data.track) {

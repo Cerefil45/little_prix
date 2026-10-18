@@ -9,7 +9,11 @@ import { RaceScene } from './scenes/RaceScene';
 /**
  * Crea la configuración de Phaser para el juego.
  */
-export function createGameConfig(parent: string | HTMLElement, vehicleId: string = 'balanced'): Phaser.Types.Core.GameConfig {
+export function createGameConfig(
+  parent: string | HTMLElement, 
+  vehicleId: string = 'balanced',
+  trackId: string = 'circuit1'
+): Phaser.Types.Core.GameConfig {
   return {
     type: Phaser.AUTO,
     parent,
@@ -42,5 +46,14 @@ export function createGameConfig(parent: string | HTMLElement, vehicleId: string
     audio: {
       noAudio: true, // Sin audio en esta iteración
     },
+    callbacks: {
+      postBoot: (game) => {
+        // Pasar datos a la escena después de que el juego se inicialice
+        const scene = game.scene.getScene('RaceScene') as RaceScene;
+        if (scene) {
+          scene.init({ vehicleId, trackId });
+        }
+      }
+    }
   };
 }

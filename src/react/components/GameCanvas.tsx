@@ -79,7 +79,7 @@ export function GameCanvas({ onStateUpdate, onReady, onProgress, inputRef, scene
     onProgressRef.current?.(10);
 
     // Crear el juego
-    const config = createGameConfig(containerRef.current);
+    const config = createGameConfig(containerRef.current, vehicleId, trackId);
     const game = new Phaser.Game(config);
     gameRef.current = game;
 
